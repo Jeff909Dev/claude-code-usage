@@ -33,6 +33,32 @@ Requires macOS 14+ and Claude Code installed (`claude` on your PATH).
     make install       # build and copy it to /Applications (quit the running app first)
     make cli ARGS="--read-only status"
 
+## Release
+
+    make release  # build/ClaudeUsage.zip
+
+Attach `build/ClaudeUsage.zip` to a GitHub release under that exact name: the site's download button and
+`install.sh` fetch `releases/latest/download/ClaudeUsage.zip`. `site/install.sh` must stay a copy of
+`scripts/install.sh` (`make test-install` checks it); redeploy the site after changing it.
+
+Without a Developer ID the app is ad-hoc signed, so a browser download needs the **Open Anyway** step. To ship a
+notarized app instead, set up once:
+
+1. Join the Apple Developer Program ($99/year).
+2. Create a **Developer ID Application** certificate (Xcode › Settings › Accounts › Manage Certificates › + ›
+   Developer ID Application; only the team's Account Holder can) and keep it in your login keychain.
+   `security find-identity -v -p codesigning` then lists `Developer ID Application: Your Name (TEAMID)`.
+3. Create an app-specific password at account.apple.com and store it for notarytool:
+   `xcrun notarytool store-credentials claude-usage --apple-id <your Apple ID> --team-id <TEAMID>` (it asks for the
+   password).
+
+Then release with:
+
+    DEVELOPER_ID_APP="Developer ID Application: Your Name (TEAMID)" NOTARY_PROFILE=claude-usage make release
+
+`release.sh` signs with the hardened runtime and a secure timestamp, submits the app to Apple's notary service and
+waits, staples the ticket to the app, and zips the stapled app.
+
 ## How it works
 
 - Limits come from the same endpoint Claude Code's `/usage` uses, called with each account's OAuth token.
