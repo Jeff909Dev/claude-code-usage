@@ -1,10 +1,13 @@
-.PHONY: build test app run install cli release clean
+.PHONY: build test test-install app run install cli release clean
 
 build:
 	swift build
 
 test:
 	swift test
+
+test-install:
+	./scripts/test-install.sh
 
 app:
 	./scripts/bundle.sh

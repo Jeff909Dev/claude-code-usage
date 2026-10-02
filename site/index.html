@@ -16,6 +16,11 @@
   .lead { color: var(--text-2); font-size: 18px; margin: 0 0 28px; max-width: 34ch; }
   .actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
   .download { height: 42px; padding: 0 18px; font-size: 15px; border-radius: var(--r-md); text-decoration: none; }
+  .install { display: flex; align-items: stretch; gap: 8px; margin: 0 0 8px; max-width: 520px; }
+  .install code { flex: 1; min-width: 0; padding: 10px 12px; font-size: 12.5px; line-height: 1.5;
+                  border-radius: var(--r-md); overflow-wrap: break-word; }
+  .install .btn { height: auto; padding: 0 14px; font-size: 13px; }
+  .hint { color: var(--muted); font-size: 13px; margin: 0 0 20px; }
   .meta { color: var(--muted); font-family: var(--font-mono); font-size: 12px; margin: 14px 0 0; }
   .unofficial { color: var(--faint); font-size: 13px; margin: 6px 0 0; }
   .shot { width: 100%; max-width: 340px; height: auto; justify-self: center; border-radius: var(--r-lg); box-shadow: var(--shadow); }
@@ -47,9 +52,14 @@
     <div>
       <h1><span class="claude">✻</span> Claude Usage</h1>
       <p class="lead">Every Claude account's limits, pace and spend — one click away in your menu bar.</p>
+      <div class="install">
+        <code id="install-cmd">curl -fsSL https://claude-code-usage.vercel.app/install.sh | bash</code>
+        <button class="btn primary" type="button" id="copy-install">Copy</button>
+      </div>
+      <p class="hint">Paste it in Terminal: it installs the app in /Applications and opens it.</p>
       <div class="actions">
-        <a class="btn primary download"
-           href="https://github.com/Jeff909Dev/claude-code-usage/releases/latest/download/ClaudeUsage.zip">Download for macOS</a>
+        <a class="btn download"
+           href="https://github.com/Jeff909Dev/claude-code-usage/releases/latest/download/ClaudeUsage.zip">Download .zip</a>
         <a class="btn ghost download" href="https://github.com/Jeff909Dev/claude-code-usage">View on GitHub</a>
       </div>
       <p class="meta">macOS 14+ · free, MIT</p>
@@ -70,11 +80,18 @@
 
   <section>
     <h2>install</h2>
+    <p>Paste this in Terminal:
+      <code class="cmd">curl -fsSL https://claude-code-usage.vercel.app/install.sh | bash</code></p>
+    <p>It downloads the latest release, puts <b>Claude Usage.app</b> in <code>/Applications</code> (replacing an
+      older copy) and opens it. The app isn't notarized yet, but macOS doesn't quarantine what curl downloads, so it
+      opens without the <b>Open Anyway</b> step. <a href="https://github.com/Jeff909Dev/claude-code-usage/blob/main/scripts/install.sh">Read the
+      script</a> first if you like.</p>
+    <p>Or by hand:</p>
     <ol>
       <li>Download <code>ClaudeUsage.zip</code> and unzip it.</li>
       <li>Move <b>Claude Usage.app</b> to <code>/Applications</code>.</li>
-      <li>First launch <span>(it isn't notarized)</span>: open the app once, then click <b>Open Anyway</b> in
-        System Settings › Privacy &amp; Security. Or, before opening it, run
+      <li>First launch: open the app once, then click <b>Open Anyway</b> in System Settings › Privacy &amp;
+        Security. Or, before opening it, run
         <code class="cmd">xattr -dr com.apple.quarantine "/Applications/Claude Usage.app"</code></li>
     </ol>
   </section>
@@ -101,5 +118,18 @@
     <a href="https://github.com/Jeff909Dev/claude-code-usage">github.com/Jeff909Dev/claude-code-usage</a>
   </footer>
 </main>
+<script>
+  const copyButton = document.getElementById('copy-install');
+  const command = document.getElementById('install-cmd');
+  copyButton.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(command.textContent);
+      copyButton.textContent = 'Copied';
+      setTimeout(() => { copyButton.textContent = 'Copy'; }, 1500);
+    } catch {
+      getSelection().selectAllChildren(command);   // no clipboard access: leave it selected for ⌘C
+    }
+  });
+</script>
 </body>
 </html>

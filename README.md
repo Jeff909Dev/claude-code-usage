@@ -9,20 +9,28 @@ Unofficial; not affiliated with Anthropic.
 
 ## Install
 
+    curl -fsSL https://claude-code-usage.vercel.app/install.sh | bash
+
+It downloads the latest release, puts `Claude Usage.app` in `/Applications` (quitting and replacing an older copy)
+and opens it. The app isn't notarized yet, but macOS doesn't quarantine what curl downloads, so it opens without the
+**Open Anyway** step. The script is [`scripts/install.sh`](scripts/install.sh); the site serves a copy of it.
+
+Or by hand:
+
 1. Download `ClaudeUsage.zip` from the latest release and unzip it.
 2. Move `Claude Usage.app` to `/Applications`.
-3. First launch (the app is not notarized): open it once, then click **Open Anyway** in System Settings ›
-   Privacy & Security. Or, before opening it, run
-   `xattr -dr com.apple.quarantine "/Applications/Claude Usage.app"`.
+3. First launch: open it once, then click **Open Anyway** in System Settings › Privacy & Security. Or, before
+   opening it, run `xattr -dr com.apple.quarantine "/Applications/Claude Usage.app"`.
 
 Requires macOS 14+ and Claude Code installed (`claude` on your PATH).
 
 ## Build from source
 
-    make test     # swift test
-    make app      # build/Claude Usage.app
-    make run      # build and open it
-    make install  # build and copy it to /Applications (quit the running app first)
+    make test          # swift test
+    make test-install  # scripts/install.sh against local zips, into a temp folder (never /Applications)
+    make app           # build/Claude Usage.app
+    make run           # build and open it
+    make install       # build and copy it to /Applications (quit the running app first)
     make cli ARGS="--read-only status"
 
 ## How it works
@@ -112,3 +120,5 @@ terminal ends up signed out or on the wrong account, run `claude auth login` to 
       to `~/Library/Application Support/ClaudeUsage` (compare `find` + `stat` listings before and after).
 - [ ] Gatekeeper first launch from a downloaded zip: open once, then System Settings › Privacy & Security →
       **Open Anyway**; or `xattr -dr com.apple.quarantine "/Applications/Claude Usage.app"` before opening.
+- [ ] After publishing the release and the site: `curl -fsSL https://claude-code-usage.vercel.app/install.sh | bash`
+      installs the new version, quits and replaces a running older copy, and opens it with no Gatekeeper prompt.
