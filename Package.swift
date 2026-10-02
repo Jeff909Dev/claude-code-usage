@@ -13,5 +13,6 @@ let package = Package(
         .executableTarget(name: "ClaudeUsage", dependencies: ["UsageCore"]),
         .executableTarget(name: "claude-usage-cli", dependencies: ["UsageCore"]),
         .testTarget(name: "UsageCoreTests", dependencies: ["UsageCore"]),
+        .testTarget(name: "ClaudeUsageTests", dependencies: ["ClaudeUsage", "UsageCore"]),
     ]
 )

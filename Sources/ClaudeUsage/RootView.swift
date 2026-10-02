@@ -13,8 +13,7 @@ struct RootView: View {
             case .addAccount: AddAccountView()
             }
         }
-        .frame(width: 340)
-        .frame(maxHeight: 640)
+        .frame(width: Popover.width, height: Popover.height, alignment: .top)
         .background(Tok.bg)
         .overlay(alignment: .bottom) {
             if let toast = model.toast {
@@ -34,6 +33,19 @@ struct RootView: View {
         // becomes key on every opening. Both calls are cheap: popoverOpened() skips data younger than 60 s.
         .onAppear { model.popoverOpened() }
         .background(WindowBecameKey { model.popoverOpened() })
+    }
+}
+
+/// The popover's size. MenuBarExtra sizes its window from the content's minimum size, and a ScrollView's minimum height
+/// is zero: without a definite height the popover opens as just its header and footer.
+enum Popover {
+    static let width: CGFloat = 340
+    /// Read once, from the screen the app starts on.
+    static let height = height(visibleScreenHeight: NSScreen.main?.visibleFrame.height)
+
+    /// 600 pt, or less on a screen too short for it (the menu bar and the Dock left out), with a margin below.
+    static func height(visibleScreenHeight: CGFloat?) -> CGFloat {
+        min(600, (visibleScreenHeight ?? .infinity) - 40)
     }
 }
 

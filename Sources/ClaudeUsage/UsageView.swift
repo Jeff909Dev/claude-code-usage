@@ -156,7 +156,7 @@ private struct NoAccountYet: View {
                 Notice(title: problem)
             }
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.horizontal, 12)
         .padding(.vertical, 28)
     }

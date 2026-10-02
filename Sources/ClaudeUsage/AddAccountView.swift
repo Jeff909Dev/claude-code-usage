@@ -17,6 +17,7 @@ struct AddAccountView: View {
                 model.route = .settings
             }
             Hairline()
+            // The form starts under the header, as in the prototype; waiting and success sit mid-popover.
             switch model.addState {
             case .idle, .failed: form
             case .waiting(let method): waiting(method)
@@ -117,7 +118,7 @@ struct AddAccountView: View {
             Button("Cancel") { model.cancelAddAccount() }
                 .buttonStyle(ClaudeButtonStyle(kind: .ghost, compact: true))
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(EdgeInsets(top: 28, leading: 20, bottom: 18, trailing: 20))
     }
 
@@ -147,7 +148,7 @@ struct AddAccountView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 6)
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(EdgeInsets(top: 28, leading: 20, bottom: 18, trailing: 20))
     }
 
