@@ -1,0 +1,10 @@
+.playwright-mcp/
+.superpowers/
+.build/
+build/
+.DS_Store
+*.xcuserstate
+.swiftpm/
+*.xcodeproj
+DerivedData/
+prototypes/shots/*.tmp.png

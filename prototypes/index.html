@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es" data-theme="dark" data-style="cli">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Usage Prototypes</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+  main { max-width: 720px; margin: 0 auto; padding: 48px 16px; }
+  h1 { font-family: var(--font-serif); font-weight: 400; font-size: 24px; margin: 0 0 4px; }
+  p.lead { color: var(--muted); margin: 0 0 28px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+  a.card {
+    display: block; padding: 14px; border-radius: var(--r-lg); background: var(--surface);
+    border: 0.5px solid var(--border); color: inherit; text-decoration: none;
+  }
+  a.card:hover { border-color: var(--claude); }
+  a.card b { display: block; font-size: var(--fs-md); margin-bottom: 4px; }
+  a.card span { color: var(--muted); }
+  .row { display: flex; gap: 8px; align-items: center; margin-top: 28px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1><span class="claude">✻</span> Claude Usage · prototypes</h1>
+  <p class="lead">Mocks estáticos con datos falsos. Nada aquí habla con Anthropic.</p>
+  <div class="cards">
+    <a class="card" href="menubar.html">
+      <b>1 · App de barra de menú (macOS)</b>
+      <span>Uso de cada cuenta: sesión 5h, semana, Fable, ritmo, gasto equivalente API. Settings con login Google / magic link.</span>
+    </a>
+    <a class="card" href="extension.html">
+      <b>2 · Extensión de Chrome</b>
+      <span>Switch rápido de cuenta en claude.ai, selector dentro de la página y rescate de artefactos que están en otra cuenta.</span>
+    </a>
+  </div>
+  <div class="row">
+    <span>tema</span>
+    <div class="seg" id="theme"><button aria-pressed="true" data-v="dark">dark</button><button aria-pressed="false" data-v="light">light</button></div>
+    <span>estilo</span>
+    <div class="seg" id="style"><button aria-pressed="true" data-v="cli">cli</button><button aria-pressed="false" data-v="app">app</button></div>
+  </div>
+</main>
+<script>
+  for (const [id, attr] of [["theme", "data-theme"], ["style", "data-style"]]) {
+    document.getElementById(id).addEventListener("click", (e) => {
+      const b = e.target.closest("button"); if (!b) return;
+      document.documentElement.setAttribute(attr, b.dataset.v);
+      for (const x of e.currentTarget.children) x.setAttribute("aria-pressed", String(x === b));
+    });
+  }
+</script>
+</body>
+</html>

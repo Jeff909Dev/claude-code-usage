@@ -1,0 +1,743 @@
+<!doctype html>
+<html lang="en" data-theme="dark" data-style="app">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Account Switcher prototype</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="tokens.css">
+<style>
+  body { padding: 28px 40px 96px; min-width: 1100px; }
+
+  .page-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+  .page-head h1 { margin: 0; font-size: var(--fs-lg); font-weight: 600; letter-spacing: -0.01em; }
+  .page-sub { color: var(--muted); font-size: var(--fs-xs); margin-bottom: 26px; }
+
+  .scenes { display: flex; flex-wrap: wrap; gap: 32px 32px; align-items: flex-start; }
+  .scene { display: flex; flex-direction: column; gap: 8px; }
+  .cap { font-family: var(--font-mono); font-size: var(--fs-xxs); color: var(--muted); letter-spacing: 0.02em; }
+  .cap b { color: var(--text-2); font-weight: 500; }
+  .cap .note { color: var(--faint); }
+  .stage {
+    position: relative; overflow: hidden;
+    background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--r-lg);
+  }
+  .row-scenes { display: flex; gap: 20px; align-items: flex-start; }
+
+  .ico { width: 14px; height: 14px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .ico.sm { width: 12px; height: 12px; }
+  .logo { color: var(--claude); font-family: var(--font-mono); font-size: 13px; line-height: 1; }
+
+  /* ---------- Fake Chrome toolbar ---------- */
+  .chrome-bar {
+    display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px;
+    background: var(--surface-2); border-bottom: 0.5px solid var(--border);
+  }
+  .chrome-nav { display: flex; gap: 8px; color: var(--faint); font-family: var(--font-mono); font-size: 13px; }
+  .omnibox {
+    flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px;
+    border-radius: 12px; background: var(--bg); color: var(--muted);
+    font-family: var(--font-mono); font-size: var(--fs-xxs); white-space: nowrap; overflow: hidden;
+  }
+  .omnibox .host { color: var(--text-2); }
+  .tb-icon {
+    display: grid; place-items: center; width: 24px; height: 24px; border-radius: 6px; color: var(--muted); flex: none;
+  }
+  .tb-icon.ext { color: var(--claude); background: var(--claude-tint); box-shadow: inset 0 0 0 0.5px rgba(217,119,87,.35); font-family: var(--font-mono); font-size: 13px; }
+  .tb-avatar { width: 20px; height: 20px; font-size: 9px; }
+
+  /* ---------- Popup (shared by scenes 1 and 4a) ---------- */
+  .popup {
+    width: 320px; background: var(--bg); border-radius: var(--r-lg); box-shadow: var(--shadow); overflow: hidden;
+  }
+  .pop-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 38px; padding: 0 12px;
+  }
+  .pop-title { display: flex; align-items: center; gap: 7px; font-weight: 600; font-size: var(--fs-sm); }
+  :root[data-style="cli"] .pop-title { font-size: var(--fs-xs); }
+  .pop-head .hint { display: flex; align-items: center; gap: 5px; color: var(--faint); font-size: var(--fs-xxs); }
+
+  .acct-list { padding: 0 4px 4px; }
+  .acct {
+    display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: var(--r-md); cursor: pointer;
+    width: 100%; border: 0; background: transparent; color: inherit; font: inherit; text-align: left;
+  }
+  .acct:hover { background: var(--surface-2); }
+  .acct.is-active { background: var(--claude-tint); }
+  .acct.is-active:hover { background: var(--claude-tint); }
+  .acct-main { flex: 1; min-width: 0; }
+  .acct-line { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .acct-label { font-weight: 500; white-space: nowrap; }
+  .acct-email {
+    color: var(--muted); font-size: 0.92em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .acct-err { color: var(--error); font-size: 0.92em; white-space: nowrap; }
+  .acct-err a { color: inherit; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+  .acct-end { flex: none; min-width: 22px; display: flex; justify-content: flex-end; }
+  .check { color: var(--claude); font-family: var(--font-mono); font-size: 13px; line-height: 1; }
+  .avatar.dim { opacity: 0.45; }
+
+  .pop-status {
+    display: flex; align-items: center; gap: 6px; margin: 0 12px 8px; padding: 6px 8px; border-radius: var(--r-md);
+    background: var(--surface); color: var(--text-2); font-size: var(--fs-xxs);
+  }
+  .pop-status[hidden] { display: none; }
+  .pop-status .muted { margin-left: auto; }
+
+  .sec { padding: 8px 12px 10px; border-top: 0.5px solid var(--border); }
+  .sec-label { font-family: var(--font-mono); font-size: var(--fs-xxs); color: var(--faint); margin-bottom: 6px; }
+  .sec-url { font-family: var(--font-mono); font-size: var(--fs-xxs); color: var(--muted); margin-bottom: 6px; }
+  .sec-row { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
+  .sec-row .txt { color: var(--text-2); display: flex; align-items: center; gap: 6px; }
+  .sec-row .btn { height: 28px; }
+
+  .pop-foot {
+    display: flex; align-items: center; gap: 2px; padding: 5px 6px; border-top: 0.5px solid var(--border);
+  }
+  .pop-foot .count { margin-left: auto; padding-right: 6px; color: var(--faint); font-size: var(--fs-xxs); }
+
+  /* ---------- Scene 1 stage ---------- */
+  .s1 { width: 380px; padding-bottom: 16px; }
+  .s1 .popup { position: relative; margin: 8px 12px 0 auto; }
+  .s1 .caret {
+    position: absolute; top: 37px; right: 50px; width: 10px; height: 10px; background: var(--bg);
+    transform: rotate(45deg); border-radius: 2px;
+  }
+
+  /* ---------- Scene 2: claude.ai sidebar mock ---------- */
+  .s2 { width: 300px; height: 478px; background: var(--bg); display: flex; }
+  .sb {
+    width: 264px; flex: none; display: flex; flex-direction: column; background: var(--surface);
+    border-right: 0.5px solid var(--border); padding: 10px 8px 8px; position: relative;
+  }
+  .sb-top { display: flex; align-items: center; justify-content: space-between; padding: 2px 6px 10px; }
+  .sb-top .logo { font-size: 16px; }
+  .sb-item {
+    display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 8px; border-radius: var(--r-md);
+    color: var(--text-2); white-space: nowrap;
+  }
+  .sb-item.new { color: var(--text); font-weight: 500; }
+  .sb-item.new .plus {
+    display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--claude-strong); color: #fff;
+  }
+  .sb-label { padding: 12px 8px 4px; color: var(--faint); font-size: var(--fs-xxs); }
+  .sb-chat { height: 26px; line-height: 26px; padding: 0 8px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-radius: var(--r-md); }
+  .sb-chat.cur { background: var(--surface-2); color: var(--text); }
+  .sb-spacer { flex: 1; }
+  .sb-acct {
+    display: flex; align-items: center; gap: 8px; padding: 6px; border-radius: var(--r-md);
+    border-top: 0.5px solid var(--border); margin-top: 6px; padding-top: 10px;
+  }
+  .sb-acct .who { flex: 1; min-width: 0; line-height: 1.25; }
+  .sb-acct .who b { display: block; font-weight: 500; }
+  .sb-acct .who span { color: var(--muted); font-size: 0.92em; }
+  .inject-btn {
+    display: grid; place-items: center; width: 24px; height: 24px; border-radius: 6px; cursor: pointer; flex: none;
+    border: 0.5px dashed rgba(217,119,87,.55); background: var(--claude-tint); color: var(--claude);
+  }
+  .inject-btn[aria-expanded="true"] { border-style: solid; }
+  .main-sliver { flex: 1; display: flex; flex-direction: column; gap: 8px; padding: 46px 8px 0; }
+  .main-sliver i { display: block; height: 6px; border-radius: 3px; background: var(--track); }
+
+  .menu {
+    position: absolute; left: 8px; right: 8px; bottom: 58px; z-index: 2;
+    background: var(--bg); border: 0.5px solid var(--border-strong); border-radius: var(--r-lg); box-shadow: var(--shadow);
+    padding: 4px;
+  }
+  .menu[hidden] { display: none; }
+  .menu-head {
+    display: flex; align-items: center; justify-content: space-between; padding: 6px 8px 4px;
+    color: var(--faint); font-size: var(--fs-xxs);
+  }
+  .menu .acct { padding: 5px 8px; }
+  .menu .avatar { width: 20px; height: 20px; font-size: 9px; }
+  .menu-add {
+    display: flex; align-items: center; gap: 10px; width: 100%; padding: 6px 8px; border-radius: var(--r-md);
+    border: 0; background: transparent; color: var(--text-2); font: inherit; cursor: pointer; text-align: left;
+  }
+  .menu-add:hover { background: var(--surface-2); color: var(--text); }
+  .menu-add .plus-ring {
+    display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%;
+    border: 0.5px dashed var(--border-strong); color: var(--muted);
+  }
+  .menu hr { margin: 4px 4px; }
+
+  /* ---------- Scene 3: artifact rescue ---------- */
+  .s3 { width: 560px; }
+  .page { background: var(--bg); min-height: 360px; padding: 12px; display: flex; flex-direction: column; }
+  .banner {
+    background: var(--surface); border: 0.5px solid var(--border-strong); border-radius: var(--r-lg);
+    padding: 10px 12px; display: flex; flex-direction: column; gap: 8px;
+  }
+  .banner-top { display: flex; align-items: center; gap: 9px; }
+  .banner-top .msg { flex: 1; min-width: 0; color: var(--text-2); }
+  .banner-top .msg b { color: var(--text); font-weight: 500; }
+  .banner-top .msg .mono { color: var(--muted); font-size: 0.92em; }
+  .checks { display: flex; flex-direction: column; border-top: 0.5px solid var(--border); padding-top: 6px; }
+  .chk { display: flex; align-items: center; gap: 9px; height: 28px; padding: 0 2px; }
+  .chk .avatar { width: 18px; height: 18px; font-size: 9px; }
+  .chk .name { font-weight: 500; white-space: nowrap; }
+  .chk .em { color: var(--muted); font-size: 0.92em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chk .dots { flex: 1; min-width: 12px; border-bottom: 1px dotted var(--border-strong); margin: 0 4px; transform: translateY(2px); }
+  .chk .res { flex: none; font-family: var(--font-mono); font-size: var(--fs-xxs); white-space: nowrap; min-width: 84px; text-align: right; }
+  .chk.found { background: var(--claude-tint); border-radius: var(--r-sm); margin: 0 -4px; padding: 0 6px; }
+  .actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .banner-ok { display: flex; align-items: center; gap: 8px; color: var(--text-2); }
+  .banner-ok .ok { font-family: var(--font-mono); }
+  .replay { margin-left: auto; }
+
+  .empty {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    text-align: center; padding: 40px 0 28px;
+  }
+  .empty h3 { margin: 0; font-size: var(--fs-lg); font-weight: 500; color: var(--text-2); }
+  :root[data-style="app"] .serif { font-family: var(--font-serif); font-weight: 400; font-size: 18px; }
+  .empty p { margin: 0 0 6px; color: var(--muted); max-width: 320px; }
+  .artifact { flex: 1; padding: 22px 18px 10px; display: flex; flex-direction: column; gap: 10px; }
+  .artifact h3 { margin: 0; color: var(--text); font-weight: 500; }
+  .artifact .meta { color: var(--muted); font-size: var(--fs-xxs); font-family: var(--font-mono); }
+  .art-table { border: 0.5px solid var(--border); border-radius: var(--r-md); overflow: hidden; }
+  .art-table div { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; padding: 6px 10px; border-top: 0.5px solid var(--border); color: var(--text-2); }
+  .art-table div:first-child { border-top: 0; color: var(--muted); background: var(--surface); font-size: var(--fs-xxs); }
+
+  /* ---------- Scene 4a: add account ---------- */
+  .s4a { width: 346px; height: 396px; padding: 12px; }
+  .s4a .popup { position: relative; }
+  .back { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 5px; color: var(--muted); cursor: pointer; }
+  .back:hover { background: var(--surface-2); color: var(--text); }
+  .steps { display: flex; gap: 4px; }
+  .steps button { width: 6px; height: 6px; padding: 0; border: 0; border-radius: 50%; background: var(--surface-3); cursor: pointer; }
+  .steps button[aria-current="step"] { background: var(--claude); }
+  .add-body { padding: 4px 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+  .add-body h4 { margin: 0; font-size: var(--fs-sm); font-weight: 500; }
+  :root[data-style="cli"] .add-body h4 { font-size: var(--fs-xs); }
+  .add-body p { margin: 0; color: var(--muted); }
+  .fine { color: var(--faint); font-size: var(--fs-xxs); line-height: 1.5; }
+  .wait { display: flex; align-items: center; gap: 8px; color: var(--text); font-weight: 500; }
+  .inset {
+    border: 0.5px solid var(--border); border-radius: var(--r-md); background: var(--surface); padding: 10px;
+    display: flex; flex-direction: column; gap: 7px;
+  }
+  .inset .src { font-family: var(--font-mono); font-size: var(--fs-xxs); color: var(--faint); }
+  .inset .btn { height: 28px; }
+  .or { display: flex; align-items: center; gap: 8px; color: var(--faint); font-size: var(--fs-xxs); }
+  .or::before, .or::after { content: ""; flex: 1; height: 0.5px; background: var(--border); }
+  .saved { display: flex; align-items: center; gap: 8px; }
+  .saved .ok { font-family: var(--font-mono); font-size: 13px; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { color: var(--muted); font-size: var(--fs-xxs); }
+  .swatches { display: flex; gap: 6px; }
+  .swatches button { width: 16px; height: 16px; border-radius: 50%; border: 0; cursor: pointer; padding: 0; }
+  .swatches button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3px var(--text-2); }
+
+  /* ---------- Scene 4b: quick switcher ---------- */
+  .s4b { width: 480px; height: 396px; background: var(--bg); }
+  .fake-page { position: absolute; inset: 0; padding: 26px 30px; display: flex; flex-direction: column; gap: 10px; }
+  .fake-page i { display: block; height: 7px; border-radius: 4px; background: var(--track); }
+  .scrim { position: absolute; inset: 0; background: rgba(0,0,0,.42); }
+  :root[data-theme="light"] .scrim { background: rgba(20,20,19,.16); }
+  .palette {
+    position: absolute; top: 64px; left: 50%; transform: translateX(-50%); width: 380px;
+    background: var(--bg); border-radius: var(--r-lg); box-shadow: var(--shadow); overflow: hidden;
+  }
+  .pal-input { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border-bottom: 0.5px solid var(--border); }
+  .pal-input input {
+    flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text); font: inherit; font-size: var(--fs-sm);
+  }
+  :root[data-style="cli"] .pal-input input { font-size: var(--fs-xs); }
+  .pal-input input::placeholder { color: var(--faint); }
+  .pal-list { padding: 4px; }
+  .pal-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: var(--r-md); cursor: pointer; }
+  .pal-row.hl { background: var(--surface-2); }
+  .pal-row .mark { width: 10px; flex: none; color: var(--claude); font-family: var(--font-mono); }
+  .pal-row .avatar { width: 20px; height: 20px; font-size: 9px; }
+  .pal-row .lbl { font-weight: 500; white-space: nowrap; }
+  .pal-row .em { flex: 1; min-width: 0; color: var(--muted); font-size: 0.92em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pal-row .acct-err { font-size: 0.92em; }
+  .pal-empty { padding: 14px 12px; color: var(--muted); }
+  .pal-foot { display: flex; gap: 14px; padding: 7px 12px; border-top: 0.5px solid var(--border); color: var(--faint); font-size: var(--fs-xxs); }
+  .pal-foot span { display: inline-flex; align-items: center; gap: 4px; }
+
+  /* ---------- Prototype controls ---------- */
+  .controls {
+    position: fixed; right: 16px; bottom: 16px; z-index: 10; display: flex; align-items: center; gap: 10px;
+    padding: 7px 10px; background: var(--bg); border: 0.5px solid var(--border-strong); border-radius: var(--r-md);
+    box-shadow: var(--shadow); font-size: var(--fs-xxs);
+  }
+  .controls .lbl { color: var(--faint); font-family: var(--font-mono); }
+  .controls a { color: var(--text-2); text-decoration: none; font-family: var(--font-mono); }
+  .controls a:hover { color: var(--claude); }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-updown" viewBox="0 0 16 16"><path d="M5 6l3-3 3 3M5 10l3 3 3-3"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 16 16"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 015 0v2"/></symbol>
+  <symbol id="i-puzzle" viewBox="0 0 16 16"><path d="M6 2.5h2.5v1.2a1.3 1.3 0 102.6 0V2.5h2.4v4h-1.2a1.3 1.3 0 100 2.6h1.2v4.4H9.1v-1.2a1.3 1.3 0 10-2.6 0v1.2H2.5V9.1h1.2a1.3 1.3 0 100-2.6H2.5v-4H6"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 16 16"><path d="M8 3.5v9M3.5 8h9"/></symbol>
+  <symbol id="i-back" viewBox="0 0 16 16"><path d="M10 3.5L5.5 8l4.5 4.5"/></symbol>
+  <symbol id="i-panel" viewBox="0 0 16 16"><rect x="2.5" y="3" width="11" height="10" rx="2"/><path d="M6.5 3v10"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 16 16"><path d="M3 4.5A1.5 1.5 0 014.5 3h7A1.5 1.5 0 0113 4.5v5a1.5 1.5 0 01-1.5 1.5H7l-3 2.5V11h.5"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 16 16"><path d="M2.5 5A1.5 1.5 0 014 3.5h2.5l1.5 1.5h4A1.5 1.5 0 0113.5 6.5v5A1.5 1.5 0 0112 13H4a1.5 1.5 0 01-1.5-1.5z"/></symbol>
+  <symbol id="i-shapes" viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="5" height="5" rx="1"/><circle cx="11" cy="11" r="2.5"/><path d="M10.5 2.5l3 5h-6z"/></symbol>
+  <symbol id="i-code" viewBox="0 0 16 16"><path d="M6 4.5L2.5 8 6 11.5M10 4.5L13.5 8 10 11.5"/></symbol>
+</svg>
+
+<header class="page-head">
+  <span class="logo" style="font-size:16px">✻</span>
+  <h1>Claude Account Switcher</h1>
+</header>
+<div class="page-sub">Chrome extension · prototype · fake data · click anything — ⌥1–⌥4 switch, ⌥⇧A focuses the quick switcher</div>
+
+<main class="scenes">
+
+  <!-- 1 · Toolbar popup -->
+  <section class="scene">
+    <div class="cap"><b>1 · Toolbar popup</b></div>
+    <div class="stage s1">
+      <div class="chrome-bar">
+        <div class="chrome-nav"><span>‹</span><span>›</span><span>↻</span></div>
+        <div class="omnibox"><svg class="ico sm"><use href="#i-lock"/></svg><span><span class="host">claude.ai</span>/artifact/7f3c9e21…</span></div>
+        <span class="tb-icon"><svg class="ico"><use href="#i-puzzle"/></svg></span>
+        <span class="tb-icon ext" title="Claude Account Switcher">✻</span>
+        <span class="avatar tb-avatar" style="background:#6b6a65">J</span>
+      </div>
+      <div class="caret"></div>
+      <div class="popup" id="popup">
+        <div class="pop-head">
+          <div class="pop-title"><span class="logo">✻</span>Claude accounts</div>
+          <div class="hint">quick switch <span class="kbd">⌥⇧A</span></div>
+        </div>
+        <div class="acct-list" id="popupList"></div>
+        <div class="pop-status" id="popupStatus" hidden></div>
+        <div class="sec" id="thisTab"></div>
+        <div class="pop-foot">
+          <button class="btn ghost" data-go="add"><svg class="ico sm"><use href="#i-plus"/></svg>Add account</button>
+          <button class="btn ghost" data-go="add">Manage</button>
+          <span class="count num">4 accounts</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 · In-page switcher -->
+  <section class="scene">
+    <div class="cap"><b>2 · In-page switcher on claude.ai</b></div>
+    <div class="stage s2">
+      <aside class="sb">
+        <div class="sb-top">
+          <span class="logo">✻</span>
+          <svg class="ico" style="color:var(--faint)"><use href="#i-panel"/></svg>
+        </div>
+        <div class="sb-item new"><span class="plus"><svg class="ico sm" style="stroke-width:2"><use href="#i-plus"/></svg></span>New chat</div>
+        <div class="sb-item"><svg class="ico"><use href="#i-chat"/></svg>Chats</div>
+        <div class="sb-item"><svg class="ico"><use href="#i-folder"/></svg>Projects</div>
+        <div class="sb-item"><svg class="ico"><use href="#i-shapes"/></svg>Artifacts</div>
+        <div class="sb-item"><svg class="ico"><use href="#i-code"/></svg>Code</div>
+        <div class="sb-label">Recents</div>
+        <div class="sb-chat cur">Q3 pricing table for courses</div>
+        <div class="sb-chat">Refactor usage poller</div>
+        <div class="sb-chat">Spanish copy for landing hero</div>
+        <div class="sb-chat">Weekly limits explained</div>
+        <div class="sb-chat">Release notes draft</div>
+        <div class="sb-spacer"></div>
+
+        <div class="menu" id="sbMenu">
+          <div class="menu-head"><span>Switch account</span><span class="kbd">⌥⇧A</span></div>
+          <div id="sbMenuList"></div>
+          <hr class="divider">
+          <button class="menu-add" data-go="add"><span class="plus-ring"><svg class="ico sm"><use href="#i-plus"/></svg></span>Add another account</button>
+        </div>
+
+        <div class="sb-acct" id="sbAcct"></div>
+      </aside>
+      <div class="main-sliver"><i></i><i style="width:70%"></i><i style="width:85%"></i></div>
+    </div>
+    <div class="cap note" style="max-width:300px">Injected UI inherits claude.ai's own fonts on the real site.</div>
+  </section>
+
+  <!-- 3 · Artifact rescue -->
+  <section class="scene">
+    <div class="cap"><b>3 · Artifact rescue</b> <span class="note">· shown when an artifact link 404s in the current account</span></div>
+    <div class="stage s3">
+      <div class="chrome-bar">
+        <div class="chrome-nav"><span>‹</span><span>›</span><span>↻</span></div>
+        <div class="omnibox"><svg class="ico sm"><use href="#i-lock"/></svg><span><span class="host">claude.ai</span>/artifact/7f3c9e21-4b0a-4d1e-9a35-2c61f0e8b7d4</span></div>
+        <span class="tb-icon ext">✻</span>
+      </div>
+      <div class="page">
+        <div class="banner" id="banner"></div>
+        <div id="pageBody"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 · Add account + quick switcher -->
+  <section class="scene">
+    <div class="row-scenes">
+      <div class="scene">
+        <div class="cap"><b>4a · Add account</b> <span class="note">· click to advance</span></div>
+        <div class="stage s4a">
+          <div class="popup" id="addPopup"></div>
+        </div>
+      </div>
+      <div class="scene">
+      <div class="cap"><b>4b · Quick switcher</b> <span class="note">· ⌥⇧A from any tab · type to filter, ↑↓ ↵</span></div>
+      <div class="stage s4b">
+        <div class="fake-page">
+          <i style="width:40%;height:10px"></i><i></i><i style="width:92%"></i><i style="width:78%"></i><i style="width:88%"></i><i style="width:60%"></i>
+        </div>
+        <div class="scrim"></div>
+        <div class="palette">
+          <div class="pal-input">
+            <span class="logo">✻</span>
+            <input id="palInput" placeholder="Switch account…" autocomplete="off" spellcheck="false">
+            <span class="kbd">⌥⇧A</span>
+          </div>
+          <div class="pal-list" id="palList"></div>
+          <div class="pal-foot">
+            <span><span class="kbd">↑</span><span class="kbd">↓</span> navigate</span>
+            <span><span class="kbd">↵</span> switch</span>
+            <span><span class="kbd">esc</span> close</span>
+          </div>
+        </div>
+      </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div class="controls">
+  <span class="lbl">prototype</span>
+  <div class="seg" id="segTheme">
+    <button data-theme-set="dark" aria-pressed="true">Dark</button>
+    <button data-theme-set="light" aria-pressed="false">Light</button>
+  </div>
+  <div class="seg" id="segStyle">
+    <button data-style-set="cli" aria-pressed="false">CLI</button>
+    <button data-style-set="app" aria-pressed="true">App</button>
+  </div>
+  <a href="index.html">← all prototypes</a>
+</div>
+
+<script>
+  const ACCOUNTS = [
+    { id: 'work',     label: 'Work',     email: 'you@work.example',    plan: 'Max 20x', color: '#c96442', status: 'ok' },
+    { id: 'personal', label: 'Personal', email: 'someone@example.com', plan: 'Max 5x',  color: '#7d8a4e', status: 'ok' },
+    { id: 'studio',   label: 'Studio',   email: 'studio@example.com',  plan: 'Pro',     color: '#5b7290', status: 'ok' },
+    { id: 'lab',      label: 'Lab',      email: 'lab@example.com',     plan: 'Team',    color: '#8a5a7a', status: 'signed-out' },
+  ];
+  const ARTIFACT_OWNER = 'personal';
+  let active = 'work';
+  let statusTimer = null;
+
+  const $ = (sel) => document.querySelector(sel);
+  const byId = (id) => ACCOUNTS.find((a) => a.id === id);
+  const avatar = (a, extra = '') =>
+    `<span class="avatar ${a.status !== 'ok' ? 'dim' : ''} ${extra}" style="background:${a.color}">${a.label[0]}</span>`;
+  const endMark = (a, i) =>
+    a.id === active ? '<span class="check">✓</span>' : `<span class="kbd">⌥${i + 1}</span>`;
+
+  /* ---------- Scene 1: popup ---------- */
+  function renderPopup() {
+    $('#popupList').innerHTML = ACCOUNTS.map((a, i) => `
+      <button class="acct ${a.id === active ? 'is-active' : ''}" data-switch="${a.id}">
+        ${avatar(a)}
+        <span class="acct-main">
+          <span class="acct-line"><span class="acct-label">${a.label}</span><span class="badge">${a.plan}</span></span>
+          ${a.status === 'ok'
+            ? `<span class="acct-email" style="display:block">${a.email}</span>`
+            : `<span class="acct-err" style="display:block">signed out — <a data-go="add">sign in again</a></span>`}
+        </span>
+        <span class="acct-end">${endMark(a, i)}</span>
+      </button>`).join('');
+
+    const cur = byId(active);
+    $('#thisTab').innerHTML = active === ARTIFACT_OWNER
+      ? `<div class="sec-label">This tab</div>
+         <div class="sec-url">claude.ai/artifact/7f3c9e21…</div>
+         <div class="sec-row"><span class="txt"><span class="ok">✓</span> Artifact available in ${cur.label}</span></div>`
+      : `<div class="sec-label">This tab</div>
+         <div class="sec-url">claude.ai/artifact/7f3c9e21…</div>
+         <div class="sec-row"><span class="txt"><span class="warn">●</span>Artifact not found in ${cur.label}</span>
+         <button class="btn" data-find>Find in my accounts</button></div>`;
+  }
+
+  function setStatus(html, ms) {
+    const el = $('#popupStatus');
+    clearTimeout(statusTimer);
+    el.innerHTML = html;
+    el.hidden = false;
+    if (ms) statusTimer = setTimeout(() => { el.hidden = true; }, ms);
+  }
+
+  function switchTo(id) {
+    const a = byId(id);
+    if (!a || id === active) return;
+    if (a.status !== 'ok') {
+      setStatus(`<span class="err">●</span> ${a.label} session expired — sign in again to refresh it`, 3200);
+      return;
+    }
+    setStatus(`<span class="spinner"></span> Switching to ${a.label}…`);
+    setTimeout(() => {
+      active = id;
+      renderAll();
+      setStatus(`<span class="claude">✓</span> Now ${a.label} <span class="muted">Reloaded 2 claude.ai tabs</span>`, 3600);
+    }, 850);
+  }
+
+  /* ---------- Scene 2: in-page switcher ---------- */
+  function renderSidebar() {
+    const cur = byId(active);
+    $('#sbAcct').innerHTML = `
+      ${avatar(cur)}
+      <span class="who"><b>Jeff</b><span>${cur.label} · ${cur.plan}</span></span>
+      <button class="inject-btn" id="injectBtn" aria-expanded="${!$('#sbMenu').hidden}" title="Switch account (Claude Account Switcher)">
+        <svg class="ico"><use href="#i-updown"/></svg>
+      </button>`;
+    $('#sbMenuList').innerHTML = ACCOUNTS.map((a, i) => `
+      <button class="acct ${a.id === active ? 'is-active' : ''}" data-switch="${a.id}">
+        ${avatar(a)}
+        <span class="acct-main">
+          <span class="acct-line"><span class="acct-label">${a.label}</span></span>
+          ${a.status === 'ok'
+            ? `<span class="acct-email" style="display:block">${a.email}</span>`
+            : `<span class="acct-err" style="display:block">signed out</span>`}
+        </span>
+        <span class="acct-end">${endMark(a, i)}</span>
+      </button>`).join('');
+  }
+
+  /* ---------- Scene 3: artifact rescue ---------- */
+  let bannerState = 'a';
+  const checkResults = {};
+
+  function renderBanner() {
+    const cur = byId('work');
+    const owner = byId(ARTIFACT_OWNER);
+    const others = ACCOUNTS.filter((a) => a.id !== 'work');
+    const banner = $('#banner');
+    const body = $('#pageBody');
+
+    if (bannerState === 'done') {
+      banner.innerHTML = `
+        <div class="banner-ok">
+          <span class="ok">✓</span><span>Viewing as <b style="color:var(--text);font-weight:500">${owner.label}</b> <span class="muted">· ${owner.email}</span></span>
+          <button class="btn ghost replay" data-replay>↺ replay</button>
+        </div>`;
+      body.className = 'artifact';
+      body.innerHTML = `
+        <h3 class="serif">Q3 pricing table for courses</h3>
+        <div class="meta">artifact · created by ${owner.label} · 3 days ago</div>
+        <div class="art-table">
+          <div><span>Plan</span><span>Monthly</span><span>Yearly</span><span>Seats</span></div>
+          <div><span>Starter</span><span class="num">€19</span><span class="num">€190</span><span class="num">1</span></div>
+          <div><span>Academy</span><span class="num">€49</span><span class="num">€490</span><span class="num">5</span></div>
+          <div><span>Campus</span><span class="num">€129</span><span class="num">€1,290</span><span class="num">25</span></div>
+        </div>`;
+      return;
+    }
+
+    body.className = 'empty';
+    body.innerHTML = `
+      <h3 class="serif">Artifact not available</h3>
+      <p>This artifact doesn't exist, or the account you're signed in with can't see it.</p>
+      <button class="btn">Go to chats</button>`;
+
+    let html = `
+      <div class="banner-top">
+        <span class="logo">✻</span>
+        <span class="msg">This artifact isn't in <b>${cur.label}</b> <span class="mono">(${cur.email})</span></span>
+        ${bannerState === 'a' ? '<button class="btn" data-find>Find in my accounts</button>' : ''}
+      </div>`;
+
+    if (bannerState !== 'a') {
+      html += `<div class="checks">` + others.map((a) => {
+        const r = checkResults[a.id];
+        let res;
+        if (a.status !== 'ok') res = '<span class="faint">– signed out</span>';
+        else if (!r) res = '<span class="spinner"></span> <span class="muted">checking</span>';
+        else if (r === 'found') res = '<span class="ok">✓ found</span>';
+        else res = '<span class="muted">✗ not found</span>';
+        return `
+          <div class="chk ${r === 'found' ? 'found' : ''}">
+            ${avatar(a)}<span class="name">${a.label}</span><span class="em">${a.email}</span>
+            <span class="dots"></span><span class="res">${res}</span>
+          </div>`;
+      }).join('') + `</div>`;
+    }
+
+    if (bannerState === 'c') {
+      html += `
+        <div class="actions">
+          <button class="btn primary" data-open>Open as ${owner.label}</button>
+          <button class="btn ghost">Always open artifacts from this link in ${owner.label}</button>
+        </div>`;
+    }
+    if (bannerState === 'd') {
+      html += `<div class="actions"><span class="spinner"></span><span>Switched to ${owner.label} · reloading…</span></div>`;
+    }
+    banner.innerHTML = html;
+  }
+
+  function bannerFind() {
+    if (bannerState !== 'a') return;
+    bannerState = 'b';
+    for (const k in checkResults) delete checkResults[k];
+    renderBanner();
+    setTimeout(() => { checkResults.studio = 'missing'; renderBanner(); }, 700);
+    setTimeout(() => { checkResults.personal = 'found'; renderBanner(); }, 1200);
+    setTimeout(() => { bannerState = 'c'; renderBanner(); }, 1500);
+  }
+
+  function bannerOpen() {
+    bannerState = 'd';
+    renderBanner();
+    setTimeout(() => {
+      active = ARTIFACT_OWNER;
+      bannerState = 'done';
+      renderAll();
+    }, 1400);
+  }
+
+  function bannerReplay() {
+    bannerState = 'a';
+    active = 'work';
+    renderAll();
+  }
+
+  /* ---------- Scene 4a: add account ---------- */
+  let addStep = 1;
+  let addTimer = null;
+  const SWATCHES = ['#c96442', '#7d8a4e', '#5b7290', '#8a5a7a', '#a0793d'];
+  let swatch = '#5b7290';
+
+  function renderAdd() {
+    clearTimeout(addTimer);
+    const dots = [1, 2, 3].map((n) =>
+      `<button data-step="${n}" aria-label="Step ${n}" ${n === addStep ? 'aria-current="step"' : ''}></button>`).join('');
+    const head = `
+      <div class="pop-head">
+        <div class="pop-title"><span class="back" data-step="1"><svg class="ico sm"><use href="#i-back"/></svg></span>Add account</div>
+        <div class="steps">${dots}</div>
+      </div>`;
+    let body;
+    if (addStep === 1) {
+      body = `
+        <h4>Sign in to another Claude account</h4>
+        <p>We'll open claude.ai in a clean state so you can sign in with Google or email. Your current accounts stay saved.</p>
+        <button class="btn primary block" data-step="2">Open claude.ai login</button>
+        <div class="fine">Only claude.ai session cookies are stored, locally in this browser. Cloudflare cookies are left untouched.</div>`;
+    } else if (addStep === 2) {
+      body = `
+        <div class="wait"><span class="spinner"></span>Waiting for you to sign in…</div>
+        <p>Google or magic link — finish in the claude.ai tab. We'll save the session as soon as you land on claude.ai.</p>
+        <div class="inset">
+          <span class="src">claude.ai/login</span>
+          <button class="btn block" data-step="3">Continue with Google</button>
+          <div class="or">or</div>
+          <input class="input" placeholder="Enter your email" value="studio@example.com" tabindex="-1">
+          <button class="btn block" data-step="3">Continue with email</button>
+        </div>
+        <button class="btn ghost" data-step="1" style="align-self:flex-start">Cancel</button>`;
+      addTimer = setTimeout(() => { addStep = 3; renderAdd(); }, 4500);
+    } else {
+      body = `
+        <div class="saved"><span class="ok">✓</span><span>Saved <b style="font-weight:500">studio@example.com</b> <span class="muted">· Pro</span></span></div>
+        <div class="field">
+          <label for="lbl">Label</label>
+          <input class="input" id="lbl" value="Studio">
+        </div>
+        <div class="field">
+          <label>Color</label>
+          <div class="swatches">${SWATCHES.map((c) =>
+            `<button data-swatch="${c}" style="background:${c}" aria-pressed="${c === swatch}" aria-label="color"></button>`).join('')}</div>
+        </div>
+        <div class="fine">Switch to it any time with <span class="kbd">⌥3</span> or the quick switcher.</div>
+        <button class="btn primary block" data-step="1">Done</button>`;
+    }
+    $('#addPopup').innerHTML = head + `<div class="add-body">${body}</div>`;
+  }
+
+  /* ---------- Scene 4b: quick switcher ---------- */
+  let palIndex = 0;
+  function palItems() {
+    const q = $('#palInput').value.trim().toLowerCase();
+    return ACCOUNTS
+      .map((a, i) => ({ a, i }))
+      .filter(({ a }) => !q || (a.label + ' ' + a.email + ' ' + a.plan).toLowerCase().includes(q));
+  }
+  function renderPalette() {
+    const items = palItems();
+    if (palIndex >= items.length) palIndex = Math.max(0, items.length - 1);
+    $('#palList').innerHTML = items.length ? items.map(({ a, i }, k) => `
+      <div class="pal-row ${k === palIndex ? 'hl' : ''}" data-switch="${a.id}" data-k="${k}">
+        <span class="mark">${k === palIndex ? '❯' : ''}</span>
+        ${avatar(a)}
+        <span class="lbl">${a.label}</span>
+        ${a.status === 'ok' ? `<span class="em">${a.email}</span>` : `<span class="em"><span class="acct-err">signed out</span></span>`}
+        <span class="acct-end">${endMark(a, i)}</span>
+      </div>`).join('') : `<div class="pal-empty">No accounts match.</div>`;
+  }
+
+  function renderAll() {
+    renderPopup();
+    renderSidebar();
+    renderBanner();
+    renderPalette();
+  }
+
+  /* ---------- Events ---------- */
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-switch],[data-find],[data-open],[data-replay],[data-step],[data-go],[data-swatch],#injectBtn,[data-theme-set],[data-style-set]');
+    if (!t) return;
+    if (t.matches('[data-go]')) { e.stopPropagation(); addStep = 1; renderAdd(); document.querySelector('.s4a').scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+    if (t.matches('[data-switch]')) {
+      switchTo(t.dataset.switch);
+      if (t.closest('#sbMenu')) { /* keep menu open so the change is visible */ }
+      return;
+    }
+    if (t.matches('[data-find]')) { bannerFind(); return; }
+    if (t.matches('[data-open]')) { bannerOpen(); return; }
+    if (t.matches('[data-replay]')) { bannerReplay(); return; }
+    if (t.matches('[data-step]')) { addStep = Number(t.dataset.step); renderAdd(); return; }
+    if (t.matches('[data-swatch]')) { swatch = t.dataset.swatch; renderAdd(); return; }
+    if (t.matches('#injectBtn')) { $('#sbMenu').hidden = !$('#sbMenu').hidden; renderSidebar(); return; }
+    if (t.matches('[data-theme-set]')) {
+      document.documentElement.dataset.theme = t.dataset.themeSet;
+      document.querySelectorAll('[data-theme-set]').forEach((b) => b.setAttribute('aria-pressed', b === t));
+      return;
+    }
+    if (t.matches('[data-style-set]')) {
+      document.documentElement.dataset.style = t.dataset.styleSet;
+      document.querySelectorAll('[data-style-set]').forEach((b) => b.setAttribute('aria-pressed', b === t));
+    }
+  });
+
+  $('#palInput').addEventListener('input', () => { palIndex = 0; renderPalette(); });
+  $('#palInput').addEventListener('keydown', (e) => {
+    const items = palItems();
+    if (e.key === 'ArrowDown') { palIndex = (palIndex + 1) % Math.max(items.length, 1); renderPalette(); e.preventDefault(); }
+    else if (e.key === 'ArrowUp') { palIndex = (palIndex - 1 + items.length) % Math.max(items.length, 1); renderPalette(); e.preventDefault(); }
+    else if (e.key === 'Enter' && items[palIndex]) { switchTo(items[palIndex].a.id); }
+    else if (e.key === 'Escape') { e.target.value = ''; e.target.blur(); palIndex = 0; renderPalette(); }
+  });
+  $('#palList').addEventListener('mousemove', (e) => {
+    const row = e.target.closest('[data-k]');
+    if (row && Number(row.dataset.k) !== palIndex) { palIndex = Number(row.dataset.k); renderPalette(); }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (!e.altKey || e.metaKey || e.ctrlKey) return;
+    if (e.shiftKey && e.code === 'KeyA') { e.preventDefault(); $('#palInput').focus(); return; }
+    const m = /^Digit([1-4])$/.exec(e.code);
+    if (m && !e.shiftKey) { e.preventDefault(); switchTo(ACCOUNTS[Number(m[1]) - 1].id); }
+  });
+
+  renderAll();
+  renderAdd();
+</script>
+</body>
+</html>

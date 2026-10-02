@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en" data-style="app">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Usage</title>
+<meta name="description" content="Every Claude account's limits, pace and spend — one click away in your macOS menu bar.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext x='50' y='78' font-size='90' text-anchor='middle' fill='%23d97757'%3E%E2%9C%BB%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="tokens.css">
+<style>
+  body { font-size: 15px; line-height: 1.6; }
+  main { max-width: 960px; margin: 0 auto; padding: 56px 16px 72px; }
+  .hero { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 48px; align-items: center; }
+  h1 { font-family: var(--font-serif); font-weight: 400; font-size: 44px; line-height: 1.1; margin: 0 0 16px; }
+  h1 .claude { font-family: var(--font-mono); }
+  .lead { color: var(--text-2); font-size: 18px; margin: 0 0 28px; max-width: 34ch; }
+  .actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .download { height: 42px; padding: 0 18px; font-size: 15px; border-radius: var(--r-md); text-decoration: none; }
+  .meta { color: var(--muted); font-family: var(--font-mono); font-size: 12px; margin: 14px 0 0; }
+  .unofficial { color: var(--faint); font-size: 13px; margin: 6px 0 0; }
+  .shot { width: 100%; max-width: 340px; height: auto; justify-self: center; border-radius: var(--r-lg); box-shadow: var(--shadow); }
+  section { margin-top: 72px; }
+  h2 { font-family: var(--font-mono); font-size: 13px; font-weight: 500; color: var(--muted); margin: 0 0 16px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--r-lg); padding: 16px; }
+  .card b { display: block; margin-bottom: 4px; }
+  .card span, li span { color: var(--muted); font-size: 14px; }
+  ol { margin: 0; padding-left: 20px; }
+  ol li { margin-bottom: 10px; }
+  code { font-family: var(--font-mono); font-size: 12.5px; background: var(--surface-2); border: 0.5px solid var(--border);
+         border-radius: var(--r-sm); padding: 1px 5px; overflow-wrap: anywhere; }
+  code.cmd { display: block; width: fit-content; max-width: 100%; margin-top: 6px; padding: 4px 8px; }
+  footer { margin-top: 72px; color: var(--faint); font-family: var(--font-mono); font-size: 12px;
+           display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  a { color: var(--claude); }
+  @media (max-width: 760px) {
+    main { padding-top: 32px; }
+    .hero { grid-template-columns: 1fr; gap: 32px; }
+    h1 { font-size: 34px; }
+    .grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <div class="hero">
+    <div>
+      <h1><span class="claude">✻</span> Claude Usage</h1>
+      <p class="lead">Every Claude account's limits, pace and spend — one click away in your menu bar.</p>
+      <div class="actions">
+        <a class="btn primary download"
+           href="https://github.com/Jeff909Dev/claude-code-usage/releases/latest/download/ClaudeUsage.zip">Download for macOS</a>
+        <a class="btn ghost download" href="https://github.com/Jeff909Dev/claude-code-usage">View on GitHub</a>
+      </div>
+      <p class="meta">macOS 14+ · free, MIT</p>
+      <p class="unofficial">Unofficial — not affiliated with Anthropic.</p>
+    </div>
+    <img class="shot" src="screenshot.png" width="340" height="656"
+         alt="Claude Usage popover showing session, weekly and Fable limits, pace and spend">
+  </div>
+
+  <section>
+    <h2>what it shows</h2>
+    <div class="grid">
+      <div class="card"><b>Limits per account</b><span>5-hour session, week, and week per model — with a pace marker and when you'd hit 100%.</span></div>
+      <div class="card"><b>Which account to use</b><span>Add every account with Claude Code's own login and move the terminal to the one with headroom.</span></div>
+      <div class="card"><b>Spend on this Mac</b><span>API-equivalent cost from your local transcripts: today, 7 and 30 days, models and projects.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>install</h2>
+    <ol>
+      <li>Download <code>ClaudeUsage.zip</code> and unzip it.</li>
+      <li>Move <b>Claude Usage.app</b> to <code>/Applications</code>.</li>
+      <li>First launch <span>(it isn't notarized)</span>: open the app once, then click <b>Open Anyway</b> in
+        System Settings › Privacy &amp; Security. Or, before opening it, run
+        <code class="cmd">xattr -dr com.apple.quarantine "/Applications/Claude Usage.app"</code></li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>requirements</h2>
+    <ul>
+      <li>macOS 14 Sonoma or later</li>
+      <li>Claude Code installed and signed in at least once (<code>claude</code> on your PATH)</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>pairs well with</h2>
+    <div class="card">
+      <b><a href="https://claude-account-switcher.vercel.app">Claude Account Switcher</a></b>
+      <span>A Chrome extension that switches your claude.ai account in one click — sign in to the right account
+        there before you add it here.</span>
+    </div>
+  </section>
+
+  <footer>
+    <span>Unofficial — not affiliated with Anthropic. Tokens stay in your Keychain.</span>
+    <a href="https://github.com/Jeff909Dev/claude-code-usage">github.com/Jeff909Dev/claude-code-usage</a>
+  </footer>
+</main>
+</body>
+</html>

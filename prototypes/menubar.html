@@ -1,0 +1,789 @@
+<!doctype html>
+<html lang="en" data-theme="dark" data-style="cli">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Usage — menu bar prototype</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="tokens.css">
+<style>
+  html, body { height: 100%; }
+  body { overflow: hidden; }
+  button { font: inherit; color: inherit; }
+  svg { display: block; }
+
+  /* ── Fake desktop + macOS menu bar ─────────────────────────────── */
+  .desktop {
+    position: fixed; inset: 0;
+    background-color: var(--surface);
+    background-image: radial-gradient(var(--border) 1px, transparent 1.3px);
+    background-size: 18px 18px;
+  }
+  .menubar {
+    position: fixed; top: 0; left: 0; right: 0; height: 24px; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between; padding: 0 10px 0 14px;
+    font-family: var(--font-sans); font-size: 13px; color: var(--text);
+    background: color-mix(in srgb, var(--surface-2) 84%, transparent);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border-bottom: 0.5px solid var(--border);
+  }
+  .mb-left { display: flex; align-items: center; gap: 18px; }
+  .mb-left b { font-weight: 600; }
+  .mb-left span { color: var(--text-2); }
+  .mb-right { display: flex; align-items: center; gap: 4px; color: var(--text-2); }
+  .mb-icon { display: grid; place-items: center; height: 20px; padding: 0 6px; }
+  .mb-clock { padding: 0 6px; color: var(--text); font-variant-numeric: tabular-nums; }
+  .status-item {
+    display: flex; align-items: center; gap: 5px; height: 20px; padding: 0 7px; margin-right: 6px;
+    border: 0; border-radius: 4px; background: transparent; cursor: default;
+    font-family: var(--font-mono); font-size: 12px; color: var(--text);
+  }
+  .status-item:hover, .status-item.open { background: color-mix(in srgb, var(--text) 13%, transparent); }
+  .status-item .logo { color: var(--claude); }
+  .status-item .sep { color: var(--faint); }
+
+  /* ── Popover ───────────────────────────────────────────────────── */
+  .popover {
+    position: fixed; top: 31px; z-index: 20; width: 340px; max-height: 640px;
+    display: flex; flex-direction: column;
+    background: var(--bg); border-radius: var(--r-lg); box-shadow: var(--shadow);
+  }
+  .popover[hidden] { display: none; }
+  .popover::before {
+    content: ""; position: absolute; top: -6px; left: var(--arrow-x, 50%); width: 12px; height: 12px;
+    background: var(--bg); border-radius: 2px; transform: rotate(45deg);
+    box-shadow: -0.5px -0.5px 0 0 var(--border-strong);
+  }
+  .view { position: relative; display: flex; flex-direction: column; min-height: 0; flex: 1; border-radius: var(--r-lg); }
+  .view[hidden] { display: none; }
+  .view-body { overflow-y: auto; min-height: 0; flex: 1; scrollbar-width: thin; }
+  .view-foot {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 6px 8px 6px 12px; border-top: 0.5px solid var(--border);
+    color: var(--muted); font-size: var(--fs-xxs);
+  }
+
+  .sec { padding: 10px 12px; }
+  .sec + .sec { border-top: 0.5px solid var(--border); }
+  .sec-label {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+    margin-bottom: 8px; color: var(--muted); font-size: var(--fs-xxs); text-transform: lowercase;
+  }
+  .sec-label .sub { color: var(--faint); text-transform: none; }
+
+  .icon-btn {
+    display: grid; place-items: center; width: 22px; height: 22px; padding: 0;
+    border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer;
+  }
+  .icon-btn:hover { background: var(--surface-2); color: var(--text); }
+  .icon-btn.spinning svg { animation: rot .6s linear; }
+  @keyframes rot { to { transform: rotate(360deg); } }
+
+  /* Header */
+  .head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 12px 12px 8px; }
+  .acct { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .acct-text { min-width: 0; }
+  .acct-row1 { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .acct-row1 b { font-weight: 600; font-size: var(--fs-sm); }
+  .acct-email { color: var(--muted); font-size: var(--fs-xxs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .term-tag { color: var(--claude); font-size: var(--fs-xxs); font-family: var(--font-mono); }
+  .head-actions { display: flex; align-items: center; gap: 2px; flex: none; }
+  .head-actions .ago { color: var(--faint); font-size: var(--fs-xxs); margin-right: 2px; white-space: nowrap; }
+
+  /* Account chips */
+  .chips { display: flex; gap: 4px; padding: 0 12px 10px; overflow-x: auto; scrollbar-width: none; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 7px 0 4px; flex: none;
+    border: 0.5px solid transparent; border-radius: 11px; background: transparent; color: var(--muted);
+    font-size: var(--fs-xxs); cursor: pointer;
+  }
+  .chip:hover { color: var(--text); background: var(--surface); }
+  .chip[aria-pressed="true"] { color: var(--text); background: var(--surface-2); border-color: var(--border-strong); }
+  .chip .avatar { width: 14px; height: 14px; font-size: 8px; }
+  .chip .dot { font-size: 7px; line-height: 1; }
+
+  /* Limits */
+  .limit + .limit { margin-top: 10px; }
+  .limit-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+  .limit-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .limit-name .reset { color: var(--faint); margin-left: 6px; font-size: var(--fs-xxs); }
+  .limit-pct { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 600; }
+  .limit-note { margin-top: 3px; font-size: var(--fs-xxs); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .limit-note .glyph { color: var(--faint); margin-right: 4px; }
+  .limits.stale .bar > i { background: var(--faint); }
+  .limits.stale .limit-pct, .limits.stale .limit-name { color: var(--muted); }
+  .bar .pace[hidden] { display: none; }
+
+  .notice {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    margin-bottom: 10px; padding: 7px 8px 7px 10px; border-radius: var(--r-md);
+    background: color-mix(in srgb, var(--error) 10%, transparent);
+    border: 0.5px solid color-mix(in srgb, var(--error) 35%, transparent);
+  }
+  .notice .t { color: var(--error); }
+  .notice .s { color: var(--muted); font-size: var(--fs-xxs); }
+
+  /* Best account callout */
+  .callout {
+    display: flex; flex-direction: column; gap: 4px;
+    padding: 8px 8px 8px 10px; border-radius: var(--r-md);
+    background: var(--claude-tint); border: 0.5px solid color-mix(in srgb, var(--claude) 30%, transparent);
+  }
+  .callout .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .callout .t .glyph { color: var(--claude); margin-right: 4px; }
+  .callout .t b { font-weight: 600; }
+  .callout-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .callout .s { color: var(--muted); font-size: var(--fs-xxs); padding-left: 14px; }
+  .callout .btn { height: 22px; padding: 0 8px; font-size: var(--fs-xxs); flex: none; }
+  .callout.quiet { background: transparent; border-color: var(--border); color: var(--muted); }
+  .btn.sm { height: 22px; padding: 0 8px; font-size: var(--fs-xxs); }
+
+  /* Stats */
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .tile { padding: 6px 8px; border-radius: 6px; background: var(--surface); border: 0.5px solid var(--border); min-width: 0; }
+  .tile .k { color: var(--muted); font-size: var(--fs-xxs); }
+  .tile .v { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--fs-md); font-weight: 600; margin-top: 1px; }
+  .tile .x { color: var(--claude); font-size: var(--fs-xxs); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile .x.muted { color: var(--muted); }
+  .tokline { margin-top: 8px; color: var(--text-2); font-size: var(--fs-xxs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tokline .sep { color: var(--faint); margin: 0 4px; }
+
+  .sub-head { display: flex; justify-content: space-between; align-items: baseline; margin: 12px 0 5px; font-size: var(--fs-xxs); color: var(--muted); }
+  .sub-head .r { color: var(--text-2); font-family: var(--font-mono); }
+  .spark { display: flex; align-items: flex-end; gap: 2px; height: 30px; }
+  .spark i { flex: 1; min-height: 1px; border-radius: 1px; background: color-mix(in srgb, var(--claude) 70%, transparent); cursor: default; }
+  .spark i.zero { background: var(--track); }
+  .spark i.now { background: var(--claude); }
+  .spark i:hover { background: var(--text); }
+  .axis { display: flex; justify-content: space-between; margin-top: 3px; font-size: 9px; color: var(--faint); font-family: var(--font-mono); }
+
+  .stack { display: flex; gap: 1.5px; height: 6px; border-radius: 3px; overflow: hidden; }
+  .stack i { height: 100%; }
+  .legend { display: flex; gap: 10px; margin-top: 5px; font-size: var(--fs-xxs); color: var(--text-2); }
+  .legend > span::before { content: "●"; margin-right: 4px; color: var(--c); font-size: 8px; vertical-align: 1px; }
+  .legend .num { color: var(--muted); }
+
+  .proj { display: grid; grid-template-columns: 1fr 64px 48px; align-items: center; gap: 8px; font-size: var(--fs-xxs); }
+  .proj + .proj { margin-top: 4px; }
+  .proj .n { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-2); }
+  .proj .bar { height: 4px; }
+  .proj .bar > i { background: color-mix(in srgb, var(--claude) 70%, transparent); }
+  .proj .c { text-align: right; }
+  .surface { font-size: var(--fs-xxs); color: var(--muted); white-space: nowrap; }
+  .surface b { color: var(--text-2); font-weight: 400; }
+
+  /* Toast */
+  .toast {
+    position: absolute; left: 12px; right: 12px; bottom: 40px; z-index: 5;
+    padding: 7px 10px; border-radius: var(--r-md);
+    background: var(--surface-2); border: 0.5px solid var(--border-strong); box-shadow: 0 6px 18px rgba(0,0,0,.25);
+    font-size: var(--fs-xxs); color: var(--text);
+    opacity: 0; transform: translateY(4px); transition: opacity .18s, transform .18s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: none; }
+  .toast .glyph { color: var(--claude); margin-right: 4px; }
+  code { font-family: var(--font-mono); padding: 0 3px; border-radius: 3px; background: var(--surface-3); color: var(--text); }
+
+  /* ── Settings ──────────────────────────────────────────────────── */
+  .nav-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 8px 8px 6px; border-bottom: 0.5px solid var(--border); }
+  .back { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 6px; border: 0; border-radius: 6px; background: transparent; cursor: pointer; font-weight: 600; font-size: var(--fs-sm); }
+  .back:hover { background: var(--surface-2); }
+  .back .chev { color: var(--muted); font-weight: 400; }
+
+  .acct-list { margin: 0 -6px; }
+  .arow {
+    position: relative; display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 4px 6px; border-radius: 6px;
+  }
+  .arow:hover { background: var(--surface); }
+  .arow .who { min-width: 0; flex: 1; }
+  .arow .l1 { display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; }
+  .arow:hover .l1 .badge, .arow:focus-within .l1 .badge, .arow.confirming .l1 .badge { display: none; }
+  .arow .l1 b { font-weight: 600; }
+  .arow .l2 { color: var(--muted); font-size: var(--fs-xxs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .arow .st { flex: none; font-size: var(--fs-xxs); color: var(--muted); text-align: right; }
+  .arow .st.term { color: var(--claude); }
+  .arow .st.bad { color: var(--error); }
+  .arow .acts { display: none; flex: none; gap: 2px; }
+  .arow:hover .acts, .arow:focus-within .acts { display: flex; }
+  .arow:hover .st, .arow:focus-within .st { display: none; }
+  .arow.confirming .acts { display: flex; }
+  .arow.confirming .st { display: none; }
+  .acts .btn { height: 20px; padding: 0 6px; font-size: var(--fs-xxs); border-radius: 5px; }
+  .acts .btn.danger { color: var(--error); }
+  .arow input.rename { height: 18px; width: 120px; padding: 0 4px; border-radius: 4px; font-size: var(--fs-xs); }
+  .arow.fresh { animation: fresh 1.6s ease-out; }
+  @keyframes fresh { from { background: var(--claude-tint); } to { background: transparent; } }
+
+  .prow { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 28px; }
+  .prow + .prow { border-top: 0.5px solid var(--border); }
+  .prow .k { color: var(--text-2); }
+  .prow .k small { display: block; color: var(--faint); font-size: var(--fs-xxs); }
+
+  /* ── Add account sheet ─────────────────────────────────────────── */
+  .sheet { padding: 18px 20px 14px; text-align: center; }
+  .sheet .logo { font-family: var(--font-mono); font-size: 26px; line-height: 1; color: var(--claude); }
+  .sheet h2 { margin: 10px 0 4px; font-family: var(--font-serif); font-weight: 400; font-size: 19px; letter-spacing: -0.01em; }
+  .sheet .lede { margin: 0 auto 14px; max-width: 260px; color: var(--muted); font-size: var(--fs-xxs); }
+  .sheet .btn.block { height: 32px; font-size: var(--fs-xs); }
+  .gmark { width: 14px; height: 14px; }
+  .or { display: flex; align-items: center; gap: 8px; margin: 10px 0; color: var(--faint); font-size: var(--fs-xxs); }
+  .or::before, .or::after { content: ""; flex: 1; height: 0.5px; background: var(--border); }
+  .sheet .input { text-align: left; margin-bottom: 6px; height: 32px; }
+  .foot-note { margin: 14px 0 0; color: var(--faint); font-size: var(--fs-xxs); line-height: 1.5; text-align: left; }
+  .waiting { padding: 28px 20px 18px; text-align: center; }
+  .waiting .big { font-size: 22px; line-height: 1; }
+  .waiting .t { margin-top: 12px; font-weight: 600; }
+  .waiting .s { margin: 6px auto 14px; max-width: 250px; color: var(--muted); font-size: var(--fs-xxs); }
+  .waiting .s b { color: var(--text-2); font-weight: 400; }
+  .done-mark { color: var(--success); font-size: 22px; line-height: 1; font-family: var(--font-mono); }
+
+  /* ── Prototype controls ────────────────────────────────────────── */
+  .proto {
+    position: fixed; left: 12px; bottom: 12px; z-index: 30;
+    padding: 8px 10px; border-radius: var(--r-md);
+    background: var(--bg); border: 0.5px dashed var(--border-strong);
+    font-size: var(--fs-xxs); color: var(--muted);
+  }
+  .proto .ttl { margin-bottom: 6px; color: var(--faint); letter-spacing: .02em; }
+  .proto .r { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .proto .r + .r { margin-top: 5px; }
+  .proto a { display: inline-block; margin-top: 7px; color: var(--claude); text-decoration: none; }
+  .proto a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="desktop"></div>
+
+<!-- Fake macOS menu bar -->
+<header class="menubar">
+  <div class="mb-left"><b>Finder</b><span>File</span><span>Edit</span><span>View</span><span>Go</span><span>Window</span></div>
+  <div class="mb-right">
+    <button class="status-item open" id="statusItem" aria-haspopup="dialog" aria-expanded="true" title="Claude Usage"></button>
+    <span class="mb-icon" aria-hidden="true">
+      <svg width="15" height="11" viewBox="0 0 15 11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M1 3.6a9.5 9.5 0 0 1 13 0"/><path d="M3.3 6a6.2 6.2 0 0 1 8.4 0"/><path d="M5.6 8.4a2.9 2.9 0 0 1 3.8 0"/></svg>
+    </span>
+    <span class="mb-icon" aria-hidden="true">
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x="0.5" y="0.5" width="20" height="10" rx="2.6" stroke="currentColor" opacity=".55"/><rect x="2" y="2" width="14" height="7" rx="1.4" fill="currentColor"/><path d="M22 3.8v3.4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".55"/></svg>
+    </span>
+    <span class="mb-icon" aria-hidden="true">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="5.5" cy="5.5" r="4.2"/><path d="M8.6 8.6 12 12"/></svg>
+    </span>
+    <span class="mb-clock">Thu 1 Oct&nbsp; 22:00</span>
+  </div>
+</header>
+
+<!-- Popover -->
+<section class="popover" id="popover" role="dialog" aria-label="Claude Usage">
+
+  <!-- VIEW 1 · Usage -->
+  <div class="view" id="viewUsage">
+    <div class="head">
+      <div class="acct" id="acctHead"></div>
+      <div class="head-actions">
+        <span class="ago" id="ago">1m ago</span>
+        <button class="icon-btn" id="refreshBtn" title="Refresh now" aria-label="Refresh now">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 6.5A4.5 4.5 0 1 1 9.4 3"/><path d="M9.8 1v2.4H7.4"/></svg>
+        </button>
+        <button class="icon-btn" id="gearBtn" title="Settings" aria-label="Settings">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M1.5 3.5h10M1.5 9.5h10"/><circle cx="4.5" cy="3.5" r="1.5" fill="var(--bg)"/><circle cx="8.5" cy="9.5" r="1.5" fill="var(--bg)"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="chips" id="chips" role="group" aria-label="View account"></div>
+
+    <div class="view-body">
+      <div class="sec">
+        <div class="sec-label"><span>limits</span><span class="sub" id="limitsSub"></span></div>
+        <div id="notice"></div>
+        <div class="limits" id="limits"></div>
+      </div>
+
+      <div class="sec" id="bestSec"></div>
+
+      <div class="sec">
+        <div class="sec-label" style="margin-bottom:2px"><span>this mac · api-equivalent spend</span></div>
+        <div class="sec-label" style="margin-bottom:8px"><span class="sub">estimated from local transcripts</span><span class="sub" id="activeLbl"></span></div>
+
+        <div class="tiles">
+          <div class="tile"><div class="k">today</div><div class="v">$48.20</div><div class="x muted">+18% vs avg</div></div>
+          <div class="tile"><div class="k">7 days</div><div class="v">$286.40</div><div class="x muted">$40.91 / day</div></div>
+          <div class="tile" title="API-equivalent spend vs. your $200/mo Max 20x plan"><div class="k">30 days</div><div class="v">$1,140</div><div class="x">5.7× $200 plan</div></div>
+        </div>
+        <div class="tokline num">18.4M tok<span class="sep">·</span>cache hit 92%<span class="sep">·</span>312 msgs<span class="sep">·</span>9 sessions</div>
+
+        <div class="sub-head"><span>last 24h</span><span class="r" id="sparkRead"></span></div>
+        <div class="spark" id="spark"></div>
+        <div class="axis"><span>23:00</span><span>05:00</span><span>11:00</span><span>17:00</span><span>now</span></div>
+
+        <div class="sub-head"><span>model mix · today</span></div>
+        <div class="stack" id="mix"></div>
+        <div class="legend" id="mixLegend"></div>
+
+        <div class="sub-head"><span>top projects · today</span></div>
+        <div id="projects"></div>
+
+        <div class="sub-head"><span>7d by surface</span></div>
+        <div class="surface"><b>Claude Code 100%</b> · Chats 0% · Cowork 0%</div>
+      </div>
+    </div>
+
+    <div class="view-foot">
+      <span id="refreshLbl">Refreshes every 5 min</span>
+      <button class="btn ghost sm">Quit <span class="kbd">⌘Q</span></button>
+    </div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </div>
+
+  <!-- VIEW 2 · Settings -->
+  <div class="view" id="viewSettings" hidden>
+    <div class="nav-head">
+      <button class="back" data-go="usage"><span class="chev">‹</span> Settings</button>
+    </div>
+    <div class="view-body">
+      <div class="sec">
+        <div class="sec-label"><span>accounts</span><span class="sub" id="acctCount"></span></div>
+        <div class="acct-list" id="acctList"></div>
+        <button class="btn block" id="addBtn" style="margin-top:8px">+ Add account</button>
+      </div>
+      <div class="sec">
+        <div class="sec-label"><span>general</span></div>
+        <div class="prow"><span class="k">Refresh every</span>
+          <div class="seg" data-seg="refresh"><button aria-pressed="false" data-v="1m">1m</button><button aria-pressed="true" data-v="5m">5m</button><button aria-pressed="false" data-v="15m">15m</button></div></div>
+        <div class="prow"><span class="k">Menu bar shows</span>
+          <div class="seg" data-seg="mb"><button aria-pressed="false" data-v="session">Session</button><button aria-pressed="false" data-v="week">Week</button><button aria-pressed="true" data-v="both">Both</button><button aria-pressed="false" data-v="icon">Icon</button></div></div>
+        <div class="prow"><span class="k">Notify at 80%</span><button class="switch" role="switch" aria-checked="true" aria-label="Notify at 80%"></button></div>
+        <div class="prow"><span class="k">Notify at 95%</span><button class="switch" role="switch" aria-checked="true" aria-label="Notify at 95%"></button></div>
+        <div class="prow"><span class="k">Notify when limits reset</span><button class="switch" role="switch" aria-checked="false" aria-label="Notify when limits reset"></button></div>
+        <div class="prow"><span class="k">Launch at login</span><button class="switch" role="switch" aria-checked="true" aria-label="Launch at login"></button></div>
+        <div class="prow"><span class="k">Theme</span>
+          <div class="seg" data-seg="theme"><button aria-pressed="true" data-v="cli">CLI</button><button aria-pressed="false" data-v="app">Claude</button><button aria-pressed="false" data-v="system">System</button></div></div>
+      </div>
+    </div>
+    <div class="view-foot"><span>Tokens stay in your macOS Keychain · v0.1.0</span></div>
+  </div>
+
+  <!-- VIEW 3 · Add account -->
+  <div class="view" id="viewAdd" hidden>
+    <div class="nav-head">
+      <button class="back" data-go="settings"><span class="chev">‹</span> Accounts</button>
+    </div>
+    <div class="view-body" id="addBody"></div>
+  </div>
+</section>
+
+<!-- Prototype controls (not part of the app) -->
+<aside class="proto" aria-label="Prototype controls">
+  <div class="ttl">prototype controls</div>
+  <div class="r"><span>theme</span><div class="seg" data-seg="ptheme"><button aria-pressed="true" data-v="dark">Dark</button><button aria-pressed="false" data-v="light">Light</button></div></div>
+  <div class="r"><span>style</span><div class="seg" data-seg="pstyle"><button aria-pressed="true" data-v="cli">CLI</button><button aria-pressed="false" data-v="app">App</button></div></div>
+  <a href="index.html">← all prototypes</a>
+</aside>
+
+<script>
+/* ── Fake clock + data ──────────────────────────────────────────────
+   "Now" is pinned so pace math is deterministic: Thu 1 Oct 2026, 22:00 Madrid. */
+const H = 3600e3;
+const NOW = Date.parse('2026-10-01T20:00:00Z');
+const TZ = 'Europe/Madrid';
+const WINDOW = { session: 5 * H, weekly: 168 * H };
+
+const fTime = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+const fDay = new Intl.DateTimeFormat('en-US', { timeZone: TZ, weekday: 'short' });
+const fDate = new Intl.DateTimeFormat('en-CA', { timeZone: TZ });
+
+// Shape mirrors the real GET /api/oauth/usage → limits[] entries.
+const L = (kind, percent, resets, model) => ({
+  kind,
+  group: kind === 'session' ? 'session' : 'weekly',
+  percent,
+  resets_at: resets == null ? null : new Date(resets).toISOString(),
+  scope: model ? { model: { id: null, display_name: model } } : null,
+});
+
+const accounts = [
+  { id: 'work', label: 'Work', email: 'you@work.example', plan: 'Max 20x', color: '#b8664a',
+    state: 'ok', token: 'token ok', ago: '1m ago',
+    limits: [L('session', 25, NOW + 2.5 * H), L('weekly_all', 54, '2026-10-06T04:00:00Z'), L('weekly_scoped', 64, '2026-10-06T04:00:00Z', 'Fable')] },
+  { id: 'personal', label: 'Personal', email: 'someone@example.com', plan: 'Max 5x', color: '#7d8450',
+    state: 'ok', token: 'refreshes in 5h', ago: '1m ago',
+    limits: [L('session', 0, null), L('weekly_all', 12, '2026-10-03T09:00:00Z'), L('weekly_scoped', 20, '2026-10-03T09:00:00Z', 'Fable')] },
+  { id: 'studio', label: 'Studio', email: 'studio@example.com', plan: 'Pro', color: '#5d7290',
+    state: 'ok', token: 'token ok', ago: '1m ago',
+    limits: [L('session', 88, NOW + 1.2 * H), L('weekly_all', 91, '2026-10-02T16:00:00Z'), L('weekly_scoped', 97, '2026-10-02T16:00:00Z', 'Fable')] },
+  { id: 'lab', label: 'Lab', email: 'lab@example.com', plan: 'Team · Premium', color: '#85607f',
+    state: 'expired', token: 'needs sign-in', ago: '3d ago',
+    limits: [L('session', 0, null), L('weekly_all', 33, '2026-10-04T12:00:00Z'), L('weekly_scoped', 41, '2026-10-04T12:00:00Z', 'Fable')] },
+];
+
+// 24 hourly buckets, 23:00 yesterday → 22:00 now (API-equivalent $)
+const HOURLY = [1.20, 0.40, 0, 0, 0, 0, 0, 0, 0.30, 1.10, 2.80, 4.20, 3.60, 2.10, 1.40, 6.10, 5.20, 4.80, 3.90, 2.60, 1.80, 3.10, 3.30, 1.50];
+const MIX = [
+  { name: 'Fable', pct: 81, c: 'var(--claude)' },
+  { name: 'Opus', pct: 12, c: 'var(--suggestion)' },
+  { name: 'Haiku', pct: 7, c: 'var(--plan)' },
+];
+const PROJECTS = [['acme/app', 21.10], ['side-project', 9.80], ['claude-code-usage', 4.30]];
+
+const state = { viewed: 'work', terminal: 'work', menubar: 'both', reauth: null };
+
+/* ── Helpers ─────────────────────────────────────────────────────── */
+const $ = (s, r = document) => r.querySelector(s);
+const byId = id => accounts.find(a => a.id === id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const level = p => (p >= 90 ? 'crit' : p >= 70 ? 'warn' : 'normal');
+const pctClass = p => ({ crit: 'err', warn: 'warn', normal: '' }[level(p)]);
+const barClass = p => ({ crit: 'lv-crit', warn: 'lv-warn', normal: '' }[level(p)]);
+
+function dur(ms) {
+  const m = Math.max(0, Math.round(ms / 60000)), h = Math.floor(m / 60), mm = m % 60;
+  return h ? `${h}h ${String(mm).padStart(2, '0')}m` : `${mm}m`;
+}
+function when(ms) {
+  const d = new Date(ms);
+  return fDate.format(d) === fDate.format(new Date(NOW)) ? fTime.format(d) : `${fDay.format(d)} ${fTime.format(d)}`;
+}
+function limitName(l) {
+  if (l.kind === 'session') return 'Session · 5h';
+  if (l.kind === 'weekly_all') return 'Week · all models';
+  return `Week · ${l.scope?.model?.display_name ?? 'scoped'}`;
+}
+function resetText(l) {
+  if (!l.resets_at) return '';
+  const t = Date.parse(l.resets_at);
+  return l.kind === 'session' ? `resets ${fTime.format(new Date(t))} · in ${dur(t - NOW)}` : `resets ${when(t)}`;
+}
+// Linear projection inside the current window: where should usage be by now, and when would it hit 100%?
+function pace(l) {
+  if (!l.resets_at) return { text: 'no active session', cls: 'faint', elapsed: null };
+  const reset = Date.parse(l.resets_at), win = WINDOW[l.group], start = reset - win;
+  const elapsed = Math.min(100, Math.max(0, ((NOW - start) / win) * 100));
+  if (l.percent >= 100) return { text: `limit reached · back ${when(reset)}`, cls: 'err', elapsed };
+  const diff = Math.round(l.percent - elapsed);
+  if (diff > 5) {
+    const hit = NOW + (100 - l.percent) / (l.percent / (NOW - start));
+    return hit < reset
+      ? { text: `ahead of pace +${diff} pts · 100% ≈ ${when(hit)}`, cls: 'warn', elapsed }
+      : { text: `ahead of pace +${diff} pts · lasts until reset`, cls: '', elapsed };
+  }
+  if (diff < -5) return { text: `under pace −${-diff} pts`, cls: '', elapsed };
+  return { text: 'on pace', cls: '', elapsed };
+}
+const weekMax = a => Math.max(...a.limits.filter(l => l.group === 'weekly').map(l => l.percent));
+const sessionPct = a => a.limits.find(l => l.kind === 'session').percent;
+const avatar = (a, cls = '') => `<span class="avatar ${cls}" style="background:${a.color}">${esc(a.label[0])}</span>`;
+
+/* ── Status item ─────────────────────────────────────────────────── */
+function renderStatusItem() {
+  const a = byId(state.terminal), s = sessionPct(a), w = weekMax(a);
+  const worst = Math.max(s, w);
+  const n = p => `<span class="${pctClass(p)}">${p}%</span>`;
+  const body = {
+    session: n(s), week: n(w), both: `${n(s)}<span class="sep">·</span>${n(w)}`, icon: '',
+  }[state.menubar];
+  const logoCls = state.menubar === 'icon' && level(worst) !== 'normal' ? pctClass(worst) : '';
+  $('#statusItem').innerHTML = `<span class="logo ${logoCls}">✻</span>${body}`;
+}
+
+/* ── Usage view ──────────────────────────────────────────────────── */
+function renderUsage() {
+  const a = byId(state.viewed), isTerm = a.id === state.terminal;
+  $('#acctHead').innerHTML = `
+    ${avatar(a)}
+    <div class="acct-text">
+      <div class="acct-row1"><b>${esc(a.label)}</b><span class="badge">${esc(a.plan)}</span></div>
+      <div class="acct-email">${esc(a.email)}${isTerm ? '<span class="term-tag"> · ● terminal</span>' : ''}</div>
+    </div>`;
+  $('#ago').textContent = a.ago;
+
+  $('#chips').innerHTML = accounts.map(x => `
+    <button class="chip" aria-pressed="${x.id === state.viewed}" data-id="${x.id}" title="${esc(x.email)}">
+      ${avatar(x)}${esc(x.label)}${x.id === state.terminal ? '<span class="dot claude">●</span>' : ''}${x.state === 'expired' ? '<span class="dot err">●</span>' : ''}
+    </button>`).join('');
+
+  const stale = a.state === 'expired';
+  $('#notice').innerHTML = stale ? `
+    <div class="notice">
+      <div><div class="t">Session expired — sign in again</div><div class="s">showing last known values · ${esc(a.ago)}</div></div>
+      <button class="btn sm" data-reauth="${a.id}">Sign in</button>
+    </div>` : '';
+  $('#limitsSub').textContent = stale ? 'stale' : '';
+  const lim = $('#limits');
+  lim.classList.toggle('stale', stale);
+  lim.innerHTML = a.limits.map(l => {
+    const p = pace(l);
+    const note = stale ? 'not refreshed' : p.text;
+    const noteCls = stale ? 'faint' : p.cls;
+    return `
+      <div class="limit">
+        <div class="limit-top">
+          <span class="limit-name">${limitName(l)}<span class="reset">${stale ? '' : resetText(l)}</span></span>
+          <span class="limit-pct ${stale ? '' : pctClass(l.percent)}">${l.resets_at || l.percent ? l.percent + '%' : '—'}</span>
+        </div>
+        <div class="bar ${stale ? '' : barClass(l.percent)}"><i style="width:${l.percent}%"></i><span class="pace" style="left:${p.elapsed ?? 0}%" ${p.elapsed == null || stale ? 'hidden' : ''}></span></div>
+        <div class="limit-note ${noteCls}"><span class="glyph">⎿</span>${note}</div>
+      </div>`;
+  }).join('');
+
+  renderBest();
+  $('#activeLbl').textContent = `terminal: ${byId(state.terminal).label}`;
+}
+
+function renderBest() {
+  const term = byId(state.terminal);
+  const others = accounts.filter(a => a.state === 'ok' && a.id !== term.id);
+  const best = others.sort((x, y) => weekMax(x) - weekMax(y))[0];
+  const sec = $('#bestSec');
+  if (best && weekMax(best) + 10 < weekMax(term)) {
+    const w = best.limits.find(l => l.kind === 'weekly_all').percent;
+    const f = best.limits.find(l => l.kind === 'weekly_scoped').percent;
+    sec.innerHTML = `
+      <div class="sec-label"><span>best account now</span></div>
+      <div class="callout">
+        <div class="t"><span class="glyph">❯</span><b>${esc(best.label)}</b> has the most headroom</div>
+        <div class="callout-row">
+          <span class="s num">week ${w}% · Fable ${f}%</span>
+          <button class="btn primary" data-use="${best.id}">Use in terminal</button>
+        </div>
+      </div>`;
+  } else {
+    sec.innerHTML = `
+      <div class="sec-label"><span>best account now</span></div>
+      <div class="callout quiet"><div class="t"><span class="glyph ok">✓</span>Terminal already has the most headroom</div></div>`;
+  }
+}
+
+function renderStats() {
+  const max = Math.max(...HOURLY);
+  const hourLabel = i => `${String((23 + i) % 24).padStart(2, '0')}:00`;
+  $('#spark').innerHTML = HOURLY.map((v, i) =>
+    `<i class="${v === 0 ? 'zero' : ''} ${i === HOURLY.length - 1 ? 'now' : ''}" style="height:${v === 0 ? 1 : Math.max(2, (v / max) * 100)}%" data-h="${hourLabel(i)}" data-v="${v.toFixed(2)}"></i>`).join('');
+  const peakI = HOURLY.indexOf(max);
+  const peakText = `peak ${hourLabel(peakI)} · $${max.toFixed(2)}`;
+  $('#sparkRead').textContent = peakText;
+  $('#spark').onmouseover = e => { const t = e.target.closest('i'); if (t) $('#sparkRead').textContent = `${t.dataset.h} · $${t.dataset.v}`; };
+  $('#spark').onmouseleave = () => { $('#sparkRead').textContent = peakText; };
+
+  $('#mix').innerHTML = MIX.map(m => `<i style="width:${m.pct}%;background:${m.c}" title="${m.name} ${m.pct}%"></i>`).join('');
+  $('#mixLegend').innerHTML = MIX.map(m => `<span style="--c:${m.c}">${m.name} <span class="num">${m.pct}%</span></span>`).join('');
+
+  const top = PROJECTS[0][1];
+  $('#projects').innerHTML = PROJECTS.map(([n, c]) => `
+    <div class="proj"><span class="n">${esc(n)}</span><div class="bar"><i style="width:${(c / top) * 100}%"></i></div><span class="c num">$${c.toFixed(2)}</span></div>`).join('');
+}
+
+/* ── Settings view ───────────────────────────────────────────────── */
+function renderSettings(freshId) {
+  $('#acctCount').textContent = `${accounts.length} signed in`;
+  $('#acctList').innerHTML = accounts.map(a => {
+    const isTerm = a.id === state.terminal;
+    const st = isTerm ? '<span class="st term">● terminal</span>'
+      : a.state === 'expired' ? '<span class="st bad">needs sign-in</span>'
+      : `<span class="st">${esc(a.token)}</span>`;
+    const acts = a.state === 'expired'
+      ? `<button class="btn sm" data-reauth="${a.id}">Sign in</button><button class="btn ghost" data-rename="${a.id}">Rename</button><button class="btn ghost danger" data-remove="${a.id}">Remove</button>`
+      : `${isTerm ? '' : `<button class="btn" data-use="${a.id}">Use in terminal</button>`}<button class="btn ghost" data-rename="${a.id}">Rename</button>${isTerm ? '' : `<button class="btn ghost danger" data-remove="${a.id}">Remove</button>`}`;
+    return `
+      <div class="arow ${a.id === freshId ? 'fresh' : ''}" data-row="${a.id}">
+        ${avatar(a)}
+        <div class="who">
+          <div class="l1"><b class="lbl">${esc(a.label)}</b><span class="badge">${esc(a.plan)}</span></div>
+          <div class="l2">${esc(a.email)}</div>
+        </div>
+        ${st}
+        <div class="acts">${acts}</div>
+      </div>`;
+  }).join('');
+}
+
+/* ── Add account view ────────────────────────────────────────────── */
+const GOOGLE_G = `<svg class="gmark" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>`;
+
+let addTimer = null;
+function renderAddForm() {
+  const re = state.reauth ? byId(state.reauth) : null;
+  $('#addBody').innerHTML = `
+    <div class="sheet">
+      <div class="logo">✻</div>
+      <h2>${re ? 'Sign in to ' + esc(re.label) : 'Add a Claude account'}</h2>
+      <p class="lede">Sign in on claude.ai — Claude Code's official login. Works with Google or email.</p>
+      <button class="btn block" id="googleBtn">${GOOGLE_G}Continue with Google</button>
+      <div class="or">or</div>
+      <input class="input" id="emailIn" type="email" placeholder="name@example.com" value="${re ? esc(re.email) : ''}" autocomplete="off">
+      <button class="btn primary block" id="emailBtn">Continue with email</button>
+      <p class="foot-note">Each account gets its own credential slot in Keychain. Your <span class="mono">~/.claude</span> settings, history and plugins stay shared.</p>
+    </div>`;
+}
+function startSignIn(method) {
+  const re = state.reauth ? byId(state.reauth) : null;
+  const typed = ($('#emailIn')?.value || '').trim();
+  const email = re ? re.email : method === 'email' ? (typed || 'music@example.com') : 'music@example.com';
+  const msg = method === 'email'
+    ? `We sent a magic link to <b>${esc(email)}</b>. Open it — the login finishes in your browser.`
+    : 'Finish signing in in your browser.';
+  $('#addBody').innerHTML = `
+    <div class="waiting">
+      <div class="big spinner"></div>
+      <div class="t">Waiting for sign-in…</div>
+      <p class="s">${msg}</p>
+      <button class="btn ghost sm" id="cancelBtn">Cancel</button>
+    </div>`;
+  clearTimeout(addTimer);
+  addTimer = setTimeout(() => finishSignIn(email, re), 2500);
+}
+function finishSignIn(email, re) {
+  let acct;
+  if (re) {
+    acct = re;
+    Object.assign(acct, { state: 'ok', token: 'token ok', ago: 'just now' });
+  } else {
+    const local = email.split('@')[0].split(/[.+_-]/)[0] || 'New';
+    acct = {
+      id: 'acct' + Date.now(), label: local[0].toUpperCase() + local.slice(1), email, plan: 'Pro', color: '#9a8462',
+      state: 'ok', token: 'token ok', ago: 'just now',
+      limits: [L('session', 0, null), L('weekly_all', 3, '2026-10-08T10:00:00Z'), L('weekly_scoped', 5, '2026-10-08T10:00:00Z', 'Fable')],
+    };
+    accounts.push(acct);
+  }
+  $('#addBody').innerHTML = `
+    <div class="waiting">
+      <div class="done-mark">✓</div>
+      <div class="t">${re ? 'Signed in' : 'Added'} ${esc(acct.email)} · ${esc(acct.plan)}</div>
+      <p class="s">Usage will appear in the menu bar within a minute.</p>
+    </div>`;
+  addTimer = setTimeout(() => { state.reauth = null; renderUsage(); renderSettings(acct.id); show('settings'); }, 1300);
+}
+
+/* ── Navigation, toast, events ───────────────────────────────────── */
+function show(view) {
+  $('#viewUsage').hidden = view !== 'usage';
+  $('#viewSettings').hidden = view !== 'settings';
+  $('#viewAdd').hidden = view !== 'add';
+  if (view === 'add') renderAddForm();
+  if (view !== 'add') clearTimeout(addTimer);
+}
+let toastTimer;
+function toast(html) {
+  const t = $('#toast');
+  t.innerHTML = html;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+function useInTerminal(id) {
+  state.terminal = id;
+  renderStatusItem(); renderUsage(); renderSettings();
+  toast(`<span class="glyph">✻</span>Terminal switched to ${esc(byId(id).label)} — new <code>claude</code> sessions use it`);
+}
+
+function placePopover() {
+  const pop = $('#popover'), r = $('#statusItem').getBoundingClientRect();
+  const cx = r.left + r.width / 2, w = pop.offsetWidth || 340;
+  const left = Math.min(window.innerWidth - w - 8, Math.max(8, cx - w / 2));
+  pop.style.left = left + 'px';
+  pop.style.setProperty('--arrow-x', (cx - left - 6) + 'px');
+}
+
+function setSeg(name, v) {
+  document.querySelectorAll(`[data-seg="${name}"] button`).forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === v)));
+}
+function applyTheme(theme) {
+  if (theme) document.documentElement.dataset.theme = theme; else delete document.documentElement.dataset.theme;
+  setSeg('ptheme', theme || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'));
+}
+function applyStyle(style) {
+  document.documentElement.dataset.style = style;
+  setSeg('pstyle', style);
+  requestAnimationFrame(placePopover);
+}
+
+document.addEventListener('click', e => {
+  const t = e.target;
+  if (t.closest('#statusItem')) {
+    const pop = $('#popover'), open = pop.hidden;
+    pop.hidden = !open;
+    $('#statusItem').classList.toggle('open', open);
+    $('#statusItem').setAttribute('aria-expanded', String(open));
+    if (open) placePopover();
+    return;
+  }
+  const chip = t.closest('.chip');
+  if (chip) { state.viewed = chip.dataset.id; renderUsage(); return; }
+  if (t.closest('#gearBtn')) { renderSettings(); show('settings'); return; }
+  const go = t.closest('[data-go]');
+  if (go) { show(go.dataset.go); if (go.dataset.go === 'settings') renderSettings(); return; }
+  if (t.closest('#refreshBtn')) {
+    const b = $('#refreshBtn');
+    b.classList.remove('spinning'); void b.offsetWidth; b.classList.add('spinning');
+    byId(state.viewed).ago = 'just now';
+    $('#ago').textContent = 'just now';
+    return;
+  }
+  const use = t.closest('[data-use]');
+  if (use) { useInTerminal(use.dataset.use); return; }
+  const reauth = t.closest('[data-reauth]');
+  if (reauth) { state.reauth = reauth.dataset.reauth; show('add'); return; }
+  if (t.closest('#addBtn')) { state.reauth = null; show('add'); return; }
+  if (t.closest('#googleBtn')) { startSignIn('google'); return; }
+  if (t.closest('#emailBtn')) { startSignIn('email'); return; }
+  if (t.closest('#cancelBtn')) { clearTimeout(addTimer); renderAddForm(); return; }
+
+  const ren = t.closest('[data-rename]');
+  if (ren) {
+    const a = byId(ren.dataset.rename), row = t.closest('.arow'), lbl = row.querySelector('.lbl');
+    lbl.outerHTML = `<input class="input rename" value="${esc(a.label)}" aria-label="Account name">`;
+    const inp = row.querySelector('input.rename');
+    inp.focus(); inp.select();
+    const commit = () => { a.label = inp.value.trim() || a.label; renderSettings(); renderUsage(); renderStatusItem(); };
+    inp.addEventListener('keydown', ev => { if (ev.key === 'Enter') commit(); if (ev.key === 'Escape') renderSettings(); });
+    inp.addEventListener('blur', commit, { once: true });
+    return;
+  }
+  const rem = t.closest('[data-remove]');
+  if (rem) {
+    const a = byId(rem.dataset.remove), row = t.closest('.arow');
+    row.classList.add('confirming');
+    row.querySelector('.acts').innerHTML = `<span class="faint" style="font-size:var(--fs-xxs);margin-right:4px">Remove ${esc(a.label)}?</span><button class="btn danger" data-confirm-remove="${a.id}">Remove</button><button class="btn ghost" data-cancel-remove>Cancel</button>`;
+    return;
+  }
+  const cr = t.closest('[data-confirm-remove]');
+  if (cr) {
+    accounts.splice(accounts.findIndex(a => a.id === cr.dataset.confirmRemove), 1);
+    if (state.viewed === cr.dataset.confirmRemove) state.viewed = state.terminal;
+    renderSettings(); renderUsage();
+    return;
+  }
+  if (t.closest('[data-cancel-remove]')) { renderSettings(); return; }
+
+  const sw = t.closest('.switch');
+  if (sw) { sw.setAttribute('aria-checked', String(sw.getAttribute('aria-checked') !== 'true')); return; }
+
+  const segBtn = t.closest('.seg button');
+  if (segBtn) {
+    const name = segBtn.parentElement.dataset.seg, v = segBtn.dataset.v;
+    setSeg(name, v);
+    if (name === 'refresh') $('#refreshLbl').textContent = `Refreshes every ${v.replace('m', '')} min`;
+    if (name === 'mb') { state.menubar = v; renderStatusItem(); requestAnimationFrame(placePopover); }
+    if (name === 'ptheme') applyTheme(v);
+    if (name === 'pstyle') { applyStyle(v); setSeg('theme', v); }
+    if (name === 'theme') {
+      if (v === 'system') { applyStyle('app'); applyTheme(null); }
+      else applyStyle(v);
+    }
+  }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !$('#popover').hidden && !e.target.closest('input')) {
+    $('#popover').hidden = true;
+    $('#statusItem').classList.remove('open');
+  }
+});
+window.addEventListener('resize', placePopover);
+
+renderStatusItem();
+renderUsage();
+renderStats();
+renderSettings();
+placePopover();
+</script>
+</body>
+</html>
