@@ -19,7 +19,7 @@ final class StatusItemController: NSObject {
         self.model = model
         super.init()
         // Control Center keeps the item's visibility under this name.
-        statusItem.autosaveName = "com.jeff.ClaudeUsage.status"
+        statusItem.autosaveName = "com.jeff909dev.ClaudeUsage.status"
         // Command-drag can't remove it, and being hidden never quits the app.
         statusItem.behavior = []
         // AppKit names a new item "Item-0" and restores the visibility saved under that name, which MenuBarExtra used.

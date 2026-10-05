@@ -3,7 +3,7 @@ import SwiftUI
 import UsageCore
 
 struct SettingsView: View {
-    static let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.1.2"
+    static let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.1.3"
 
     @Environment(AppModel.self) private var model
     @Environment(\.themeStyle) private var style

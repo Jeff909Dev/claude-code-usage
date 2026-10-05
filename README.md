@@ -29,6 +29,7 @@ Requires macOS 14+ and Claude Code installed (`claude` on your PATH).
 - **The app quits or doesn't appear in the menu bar**: macOS is hiding its menu bar item. Allow Claude Usage in
   System Settings › Menu Bar (Control Center on older macOS). Since 0.1.2 the app opens a window saying so instead
   of quitting.
+- Developing: launch the bundle with `open "build/Claude Usage.app" --args --read-only`, never by running `Contents/MacOS/ClaudeUsage` from a terminal. macOS 26 files the menu bar item under the terminal app that started it; if that terminal isn't allowed in the menu bar, the item is hidden and macOS keeps remembering it.
 
 ## Build from source
 
