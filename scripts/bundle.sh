@@ -10,6 +10,7 @@ APP="build/Claude Usage.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/ClaudeUsage"
+cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -20,6 +21,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
   <key>CFBundleIdentifier</key><string>com.jeff.ClaudeUsage</string>
   <key>CFBundleName</key><string>Claude Usage</string>
   <key>CFBundleDisplayName</key><string>Claude Usage</string>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>0.1.1</string>
   <key>CFBundleVersion</key><string>2</string>

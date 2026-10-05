@@ -1,4 +1,4 @@
-.PHONY: build test test-install app run install cli release clean
+.PHONY: build test test-install app icon run install cli release clean
 
 build:
 	swift build
@@ -11,6 +11,9 @@ test-install:
 
 app:
 	./scripts/bundle.sh
+
+icon:
+	swift scripts/make-icon.swift
 
 run: app
 	open "build/Claude Usage.app"

@@ -29,6 +29,7 @@ Requires macOS 14+ and Claude Code installed (`claude` on your PATH).
     make test          # swift test
     make test-install  # scripts/install.sh against local zips, into a temp folder (never /Applications)
     make app           # build/Claude Usage.app
+    make icon          # Resources/AppIcon.icns, drawn by scripts/make-icon.swift
     make run           # build and open it
     make install       # build and copy it to /Applications (quit the running app first)
     make cli ARGS="--read-only status"
