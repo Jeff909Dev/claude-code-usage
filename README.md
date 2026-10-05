@@ -24,6 +24,12 @@ Or by hand:
 
 Requires macOS 14+ and Claude Code installed (`claude` on your PATH).
 
+## Troubleshooting
+
+- **The app quits or doesn't appear in the menu bar**: macOS is hiding its menu bar item. Allow Claude Usage in
+  System Settings › Menu Bar (Control Center on older macOS). Since 0.1.2 the app opens a window saying so instead
+  of quitting.
+
 ## Build from source
 
     make test          # swift test
