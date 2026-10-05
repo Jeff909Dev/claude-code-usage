@@ -4,8 +4,8 @@ import Testing
 @testable import ClaudeUsage
 @testable import UsageCore
 
-/// MenuBarExtra(.window) sizes its window from the content's minimum size. A popover whose minimum height is only its
-/// header and footer (a ScrollView's minimum height is zero) opens as a strip with nothing in between.
+/// The popover's hosting controller can size it from the content's minimum size. A popover whose minimum height is only
+/// its header and footer (a ScrollView's minimum height is zero) opens as a strip with nothing in between.
 @MainActor
 struct PopoverSizeTests {
     @Test(arguments: [Route.usage, .settings, .addAccount])
@@ -51,7 +51,7 @@ final class PopoverFixture {
 
     deinit { try? FileManager.default.removeItem(at: dir) }
 
-    /// What MenuBarExtra asks for: the smallest size the content accepts at the popover's width.
+    /// The smallest size the content accepts at the popover's width.
     var minimumSize: NSSize {
         NSHostingController(rootView: RootView().environment(model)).sizeThatFits(in: NSSize(width: 340, height: 0))
     }
